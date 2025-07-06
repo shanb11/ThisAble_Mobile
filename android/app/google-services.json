@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "588623646711",
+    "project_id": "thisable-6c20e",
+    "storage_bucket": "thisable-6c20e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:588623646711:android:ba4d8b4f2f4ace8c4f28f2",
+        "android_client_info": {
+          "package_name": "com.example.thisable_mobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCOf6q9dGV7xzLb9dcKvtndFxN3Zu99pGs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

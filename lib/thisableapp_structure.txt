@@ -1,0 +1,104 @@
+Folder PATH listing
+Volume serial number is DA7A-F841
+C:.
+¦   app.dart
+¦   main.dart
+¦   thisableapp_structure.txt
+¦   
++---config
+¦       api_endpoints.dart
+¦       constants.dart
+¦       routes.dart
+¦       
++---core
+¦   +---models
+¦   ¦       skill.dart
+¦   ¦       skill_category.dart
+¦   ¦       workstyle.dart
+¦   ¦       
+¦   +---services
+¦   ¦       api_service.dart
+¦   ¦       
+¦   +---theme
+¦   ¦       app_colors.dart
+¦   ¦       app_theme.dart
+¦   ¦       text_styles.dart
+¦   ¦       
+¦   +---utils
+¦           form_validators.dart
+¦           
++---features
+¦   +---candidate
+¦   ¦   +---modals
+¦   ¦   ¦       forgot_password_modal.dart
+¦   ¦   ¦       pwd_details_modal.dart
+¦   ¦   ¦       selection_modal.dart
+¦   ¦   ¦       
+¦   ¦   +---screens
+¦   ¦   ¦   +---auth
+¦   ¦   ¦   ¦       login_screen.dart
+¦   ¦   ¦   ¦       signup_screen.dart
+¦   ¦   ¦   ¦       
+¦   ¦   ¦   +---main
+¦   ¦   ¦   ¦       applications_screen.dart
+¦   ¦   ¦   ¦       dashboard_screen.dart
+¦   ¦   ¦   ¦       jobs_screen.dart
+¦   ¦   ¦   ¦       profile_screen.dart
+¦   ¦   ¦   ¦       settings_screen.dart
+¦   ¦   ¦   ¦       
+¦   ¦   ¦   +---setup
+¦   ¦   ¦           account_setup_screen.dart
+¦   ¦   ¦           apparent_needs_screen.dart
+¦   ¦   ¦           disability_type_screen.dart
+¦   ¦   ¦           jobtype_screen.dart
+¦   ¦   ¦           non_apparent_needs_screen.dart
+¦   ¦   ¦           skill_selection_screen.dart
+¦   ¦   ¦           upload_resume_screen.dart
+¦   ¦   ¦           workstyle_screen.dart
+¦   ¦   ¦           
+¦   ¦   +---services
+¦   ¦   +---widgets
+¦   ¦       +---setup
+¦   ¦               category_tab.dart
+¦   ¦               progress_bar_widget.dart
+¦   ¦               selected_skill_chip.dart
+¦   ¦               skill_card.dart
+¦   ¦               step_card.dart
+¦   ¦               workstyle_card.dart
+¦   ¦               
+¦   +---employer
+¦   ¦   +---modals
+¦   ¦   +---screens
+¦   ¦   ¦   +---auth
+¦   ¦   ¦   +---main
+¦   ¦   ¦   +---setup
+¦   ¦   +---services
+¦   ¦   +---widgets
+¦   +---landing
+¦       +---modals
+¦       ¦       job_listings_modal.dart
+¦       ¦       post_job_modal.dart
+¦       ¦       
+¦       +---screens
+¦       ¦       landing_about_screen.dart
+¦       ¦       landing_home_screen.dart
+¦       ¦       landing_jobs_screen.dart
+¦       ¦       
+¦       +---services
+¦       +---widgets
+¦               inclusive_workplace_section.dart
+¦               job_categories_section.dart
+¦               landing_footer.dart
+¦               landing_hero.dart
+¦               landing_navbar.dart
+¦               
++---models
++---shared
+    +---models
+    +---services
+    +---widgets
+            custom_button.dart
+            custom_card.dart
+            custom_text_field.dart
+            loading_widget.dart
+            

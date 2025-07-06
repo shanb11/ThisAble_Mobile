@@ -1,0 +1,48 @@
+name: thisable_mobile
+description: "ThisAble Mobile App - Job Portal for Inclusive Hiring"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.5.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+  
+  # Essential packages
+  cupertino_icons: ^1.0.8
+  
+  # Google Fonts (compatible version)
+  google_fonts: ^4.0.4
+  
+  # HTTP requests (compatible with google_fonts 4.0.4)
+  http: ^0.13.6
+  
+  # Local storage (stable version)
+  shared_preferences: ^2.1.2
+  
+  # Google Sign-In (stable version)
+  google_sign_in: ^6.1.4
+  
+  # JSON serialization
+  json_annotation: ^4.8.1
+
+  file_picker: ^8.1.2  # Add this line
+
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  
+  # JSON serialization code generation
+  json_serializable: ^6.7.1
+  build_runner: ^2.4.7
+
+flutter:
+  uses-material-design: true
+  
+  assets:
+    - assets/images/

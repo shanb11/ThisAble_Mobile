@@ -99,14 +99,46 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
             'pwd_id': personalInfo['pwd_id_number'] ?? '',
             'disability_type': personalInfo['disability_name'] ?? '',
           };
+
           _educationList = data['education'] ?? [];
           _experienceList = data['experience'] ?? [];
-          _skillsList = data['skills'] ?? [];
+
+          // FIXED: Handle categorized skills from API
+          var skillsData = data['skills'] ?? [];
+          if (skillsData is List && skillsData.isNotEmpty) {
+            // Check if skills are already categorized by the API
+            if (skillsData[0] is Map &&
+                skillsData[0].containsKey('category_name')) {
+              // Skills are already grouped by categories from API
+              _skillsList = skillsData;
+              print(
+                  '🔧 [Profile] Skills loaded: ${skillsData.length} categories');
+              for (var category in skillsData) {
+                print(
+                    '🔧 [Profile] Category: ${category['category_name']} - ${(category['skills'] as List?)?.length ?? 0} skills');
+              }
+            } else {
+              // Fallback: Skills are flat list, keep as is for now
+              _skillsList = skillsData;
+              print(
+                  '🔧 [Profile] Skills loaded: ${skillsData.length} skills (flat structure)');
+            }
+          } else {
+            _skillsList = [];
+            print('🔧 [Profile] No skills found');
+          }
+
           _accommodationsList = data['accessibility_needs'] ?? [];
-          _resumeUrl =
-              (data['resumes'] != null && (data['resumes'] as List).isNotEmpty)
-                  ? (data['resumes'] as List)[0]['file_path'] ?? ''
-                  : '';
+
+          // Handle resume data
+          var resumeData = data['resumes'];
+          _resumeUrl = '';
+          if (resumeData != null &&
+              resumeData is List &&
+              resumeData.isNotEmpty) {
+            _resumeUrl = resumeData[0]['file_path'] ?? '';
+          }
+
           _profileCompletion = data['profile_completion'] ?? 0;
           _isLoadingProfile = false;
         });
@@ -122,8 +154,7 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
           // Create new animation with actual completion percentage
           _profileCompletionAnimation = Tween<double>(
             begin: 0.0,
-            end: (_profileCompletion / 100.0)
-                .clamp(0.0, 1.0), // Ensure within bounds
+            end: (_profileCompletion / 100.0).clamp(0.0, 1.0),
           ).animate(CurvedAnimation(
             parent: _profileCompletionController,
             curve: Curves.easeInOut,
@@ -138,6 +169,7 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
         }
       }
     } catch (e) {
+      print('🔧 [Profile] Error loading profile data: $e');
       if (mounted) {
         setState(() => _isLoadingProfile = false);
         _showErrorSnackBar('Failed to load profile data');
@@ -851,6 +883,7 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
       ),
       child: Column(
         children: [
+          // Header
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -882,36 +915,128 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
               ],
             ),
           ),
+
+          // Skills Content - FIXED: Now categorized!
           Padding(
             padding: const EdgeInsets.all(20),
             child: _skillsList.isEmpty
                 ? const Text('No skills added yet.')
-                : Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
-                    children: _skillsList.map((skill) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 6),
-                        decoration: BoxDecoration(
-                          color: primaryColor.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(20),
-                          border:
-                              Border.all(color: primaryColor.withOpacity(0.3)),
-                        ),
-                        child: Text(
-                          skill['skill_name'] ?? skill.toString(),
-                          style: const TextStyle(
-                            color: primaryColor,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                : Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: _buildCategorizedSkills(),
                   ),
           ),
         ],
+      ),
+    );
+  }
+
+  List<Widget> _buildCategorizedSkills() {
+    // Group skills by category (if not already grouped from API)
+    Map<String, List<dynamic>> skillsByCategory = {};
+
+    // Check if skills are already grouped (from new API structure)
+    if (_skillsList.isNotEmpty &&
+        _skillsList[0] is Map &&
+        _skillsList[0].containsKey('category_name')) {
+      // Skills are already grouped by API
+      for (var category in _skillsList) {
+        String categoryName = category['category_name'] ?? 'Uncategorized';
+        List<dynamic> skills = category['skills'] ?? [];
+        if (skills.isNotEmpty) {
+          skillsByCategory[categoryName] = skills;
+        }
+      }
+    } else {
+      // Fallback: Group skills manually if API doesn't group them
+      for (var skill in _skillsList) {
+        String categoryName = skill['category_name'] ?? 'Uncategorized';
+        if (!skillsByCategory.containsKey(categoryName)) {
+          skillsByCategory[categoryName] = [];
+        }
+        skillsByCategory[categoryName]!.add(skill);
+      }
+    }
+
+    // Build UI for each category
+    List<Widget> categoryWidgets = [];
+
+    for (var entry in skillsByCategory.entries) {
+      String categoryName = entry.key;
+      List<dynamic> skills = entry.value;
+
+      if (skills.isNotEmpty) {
+        categoryWidgets.add(_buildSkillCategory(categoryName, skills));
+
+        // Add spacing between categories (except last one)
+        if (entry != skillsByCategory.entries.last) {
+          categoryWidgets.add(const SizedBox(height: 20));
+        }
+      }
+    }
+
+    return categoryWidgets;
+  }
+
+  Widget _buildSkillCategory(String categoryName, List<dynamic> skills) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Category Title - matches web design
+        Padding(
+          padding: const EdgeInsets.only(bottom: 12),
+          child: Text(
+            categoryName,
+            style: const TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: primaryColor,
+              height: 1.2,
+            ),
+          ),
+        ),
+
+        // Skills in this category - wrapped like web version
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: skills.map((skill) {
+            return _buildSkillChip(skill);
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSkillChip(dynamic skill) {
+    String skillName = '';
+
+    // Handle both possible skill data structures
+    if (skill is Map) {
+      skillName = skill['skill_name'] ?? skill['name'] ?? skill.toString();
+    } else {
+      skillName = skill.toString();
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        // FIXED: Matches web styling more closely
+        color: const Color(0xFFF8F9FA), // Light gray background
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: primaryColor.withOpacity(0.2),
+          width: 1,
+        ),
+      ),
+      child: Text(
+        skillName,
+        style: const TextStyle(
+          color: primaryColor,
+          fontSize: 13,
+          fontWeight: FontWeight.w500,
+          height: 1.2,
+        ),
       ),
     );
   }
@@ -931,6 +1056,7 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
       ),
       child: Column(
         children: [
+          // Header
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -962,53 +1088,18 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
               ],
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: _educationList.isEmpty
-                ? const Text('No education added yet.')
-                : Column(
-                    children: _educationList.map((education) {
-                      return Container(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        padding: const EdgeInsets.all(16),
-                        decoration: BoxDecoration(
-                          border: Border.all(color: Colors.grey[300]!),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              education['degree'] ?? 'Degree not specified',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: primaryColor,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              education['institution'] ??
-                                  'Institution not specified',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.w500,
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(height: 2),
-                            Text(
-                              '${education['start_year'] ?? ''} - ${education['end_year'] ?? 'Present'}',
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                              ),
-                            ),
-                          ],
-                        ),
-                      );
-                    }).toList(),
-                  ),
-          ),
+
+          // Education Content - FIXED: No more boxes!
+          _educationList.isEmpty
+              ? const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: Text('No education added yet.'),
+                )
+              : Column(
+                  children: _educationList.map((education) {
+                    return _buildEducationItem(education);
+                  }).toList(),
+                ),
         ],
       ),
     );
@@ -1251,59 +1342,91 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
 
   Widget _buildEducationItem(Map<String, dynamic> education) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        border: Border(bottom: BorderSide(color: Colors.grey[200]!)),
+        // REMOVED: No more border, no more background color
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.grey[100]!, // Very subtle divider
+            width: 1,
+          ),
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
+          // Education Content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Degree/Program - Main title
+                Text(
+                  education['degree'] ?? 'Degree not specified',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                    color: primaryColor,
+                    height: 1.3,
+                  ),
+                ),
+
+                const SizedBox(height: 4),
+
+                // Institution name
+                Text(
+                  education['institution'] ?? 'Institution not specified',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.grey[700],
+                    height: 1.2,
+                  ),
+                ),
+
+                const SizedBox(height: 2),
+
+                // Duration
+                Text(
+                  '${education['start_year'] ?? ''} - ${education['end_year'] ?? 'Present'}',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[500],
+                    height: 1.2,
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Action buttons - Subtle and minimal
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      education['degree'] ?? '',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                        color: primaryColor,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      education['institution'] ?? '',
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w500,
-                        fontSize: 14,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      '${education['start_year'] ?? ''} - ${education['end_year'] ?? ''}',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
+              IconButton(
+                onPressed: () => _editEducation(education),
+                icon: Icon(
+                  Icons.edit_outlined,
+                  size: 18,
+                  color: Colors.grey[600],
+                ),
+                padding: const EdgeInsets.all(4),
+                constraints: const BoxConstraints(
+                  minWidth: 32,
+                  minHeight: 32,
                 ),
               ),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    onPressed: () => _editEducation(education),
-                    icon: const Icon(Icons.edit, size: 18, color: primaryColor),
-                  ),
-                  IconButton(
-                    onPressed: () => _deleteEducation(education['id']),
-                    icon: const Icon(Icons.delete, size: 18, color: Colors.red),
-                  ),
-                ],
+              IconButton(
+                onPressed: () => _deleteEducation(education['id']),
+                icon: Icon(
+                  Icons.delete_outline,
+                  size: 18,
+                  color: Colors.grey[600],
+                ),
+                padding: const EdgeInsets.all(4),
+                constraints: const BoxConstraints(
+                  minWidth: 32,
+                  minHeight: 32,
+                ),
               ),
             ],
           ),

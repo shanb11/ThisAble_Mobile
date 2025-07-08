@@ -1137,8 +1137,7 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                accommodation['name'] ??
-                                    accommodation.toString(),
+                                accommodation.toString(),
                                 style: const TextStyle(fontSize: 14),
                               ),
                             ),

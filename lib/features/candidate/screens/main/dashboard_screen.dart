@@ -5,6 +5,7 @@ import 'profile_screen.dart';
 import 'applications_screen.dart';
 import 'jobs_screen.dart';
 import 'settings_screen.dart';
+import '../../../../../screens/test_api_screen.dart';
 
 class CandidateDashboardScreen extends StatefulWidget {
   const CandidateDashboardScreen({super.key});
@@ -665,6 +666,21 @@ class _HomePageState extends State<HomePage> {
           ),
           const SizedBox(height: 24),
           // ENHANCED: Call-to-action button
+          ElevatedButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const SimpleApiTestScreen(),
+                ),
+              );
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.orange,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('🔧 Test API'),
+          ),
           ElevatedButton.icon(
             onPressed: () {
               try {

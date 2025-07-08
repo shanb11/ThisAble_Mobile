@@ -86,13 +86,28 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
       if (response['success'] && mounted) {
         final data = response['data'];
         setState(() {
-          _profileData = data['profile'] ?? {};
+          // FIXED: Map API response structure to mobile app structure
+          final personalInfo = data['personal_info'] ?? {};
+          _profileData = {
+            'first_name': personalInfo['first_name'] ?? '',
+            'last_name': personalInfo['last_name'] ?? '',
+            'email': personalInfo['email'] ?? '',
+            'phone': personalInfo['contact_number'] ?? '',
+            'location': personalInfo['preferred_location'] ?? '',
+            'bio': personalInfo['bio'] ?? '',
+            'profile_photo': personalInfo['profile_photo_path'],
+            'pwd_id': personalInfo['pwd_id_number'] ?? '',
+            'disability_type': personalInfo['disability_name'] ?? '',
+          };
           _educationList = data['education'] ?? [];
           _experienceList = data['experience'] ?? [];
           _skillsList = data['skills'] ?? [];
-          _accommodationsList = data['accommodations'] ?? [];
-          _resumeUrl = data['resume_url'] ?? '';
-          _profileCompletion = data['completion_percentage'] ?? 0;
+          _accommodationsList = data['accessibility_needs'] ?? [];
+          _resumeUrl =
+              (data['resumes'] != null && (data['resumes'] as List).isNotEmpty)
+                  ? (data['resumes'] as List)[0]['file_path'] ?? ''
+                  : '';
+          _profileCompletion = data['profile_completion'] ?? 0;
           _isLoadingProfile = false;
         });
 
@@ -131,12 +146,12 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
   }
 
   void _populateControllers() {
-    _firstNameController.text = _profileData['first_name'] ?? '';
-    _lastNameController.text = _profileData['last_name'] ?? '';
-    _emailController.text = _profileData['email'] ?? '';
-    _phoneController.text = _profileData['phone'] ?? '';
-    _locationController.text = _profileData['location'] ?? '';
-    _bioController.text = _profileData['bio'] ?? '';
+    _firstNameController.text = (_profileData['first_name'] ?? '').toString();
+    _lastNameController.text = (_profileData['last_name'] ?? '').toString();
+    _emailController.text = (_profileData['email'] ?? '').toString();
+    _phoneController.text = (_profileData['phone'] ?? '').toString();
+    _locationController.text = (_profileData['location'] ?? '').toString();
+    _bioController.text = (_profileData['bio'] ?? '').toString();
   }
 
   Future<void> _updatePersonalInfo() async {
@@ -383,8 +398,12 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
 
                   // User Info
                   Text(
-                    '${_profileData['first_name'] ?? ''} ${_profileData['last_name'] ?? ''}'
-                        .trim(),
+                    '${(_profileData['first_name'] ?? '').toString()} ${(_profileData['last_name'] ?? '').toString()}'
+                            .trim()
+                            .isEmpty
+                        ? 'Name not specified'
+                        : '${(_profileData['first_name'] ?? '').toString()} ${(_profileData['last_name'] ?? '').toString()}'
+                            .trim(),
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 24,
@@ -492,6 +511,65 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
     }
   }
 
+  Widget _buildEditablePersonalInfo() {
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: TextFormField(
+                controller: _firstNameController,
+                decoration: const InputDecoration(
+                  labelText: 'First Name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextFormField(
+                controller: _lastNameController,
+                decoration: const InputDecoration(
+                  labelText: 'Last Name',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _emailController,
+          decoration: const InputDecoration(
+            labelText: 'Email',
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.email),
+          ),
+          keyboardType: TextInputType.emailAddress,
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _phoneController,
+          decoration: const InputDecoration(
+            labelText: 'Phone Number',
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.phone),
+          ),
+          keyboardType: TextInputType.phone,
+        ),
+        const SizedBox(height: 16),
+        TextFormField(
+          controller: _locationController,
+          decoration: const InputDecoration(
+            labelText: 'Location',
+            border: OutlineInputBorder(),
+            prefixIcon: Icon(Icons.location_on),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildPersonalInfoSection() {
     return Container(
       decoration: BoxDecoration(
@@ -507,7 +585,6 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
       ),
       child: Column(
         children: [
-          // Section Header
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -544,26 +621,18 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
                             });
                           }
                         },
-                  icon: _isUpdatingProfile
-                      ? const SizedBox(
-                          width: 16,
-                          height: 16,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : Icon(
-                          _isEditingPersonal ? Icons.check : Icons.edit,
-                          color: primaryColor,
-                        ),
+                  icon: Icon(
+                    _isEditingPersonal ? Icons.check : Icons.edit,
+                    color: primaryColor,
+                  ),
                 ),
               ],
             ),
           ),
-
-          // Content
           Padding(
             padding: const EdgeInsets.all(20),
             child: _isEditingPersonal
-                ? _buildPersonalInfoForm()
+                ? _buildEditablePersonalInfo()
                 : _buildPersonalInfoDisplay(),
           ),
         ],
@@ -823,7 +892,7 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
                     children: _skillsList.map((skill) {
                       return Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
+                            horizontal: 12, vertical: 6),
                         decoration: BoxDecoration(
                           color: primaryColor.withOpacity(0.1),
                           borderRadius: BorderRadius.circular(20),
@@ -831,9 +900,10 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
                               Border.all(color: primaryColor.withOpacity(0.3)),
                         ),
                         child: Text(
-                          skill['skill_name'] ?? '',
+                          skill['skill_name'] ?? skill.toString(),
                           style: const TextStyle(
                             color: primaryColor,
+                            fontSize: 12,
                             fontWeight: FontWeight.w500,
                           ),
                         ),
@@ -892,16 +962,53 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
               ],
             ),
           ),
-          _educationList.isEmpty
-              ? const Padding(
-                  padding: EdgeInsets.all(20),
-                  child: Text('No education added yet.'),
-                )
-              : Column(
-                  children: _educationList.map((education) {
-                    return _buildEducationItem(education);
-                  }).toList(),
-                ),
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: _educationList.isEmpty
+                ? const Text('No education added yet.')
+                : Column(
+                    children: _educationList.map((education) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          border: Border.all(color: Colors.grey[300]!),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              education['degree'] ?? 'Degree not specified',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: primaryColor,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              education['institution'] ??
+                                  'Institution not specified',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w500,
+                                fontSize: 14,
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              '${education['start_year'] ?? ''} - ${education['end_year'] ?? 'Present'}',
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+          ),
         ],
       ),
     );
@@ -1030,7 +1137,8 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                accommodation['accommodation_name'] ?? '',
+                                accommodation['name'] ??
+                                    accommodation.toString(),
                                 style: const TextStyle(fontSize: 14),
                               ),
                             ),
@@ -1280,13 +1388,18 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
   }
 
   String _getInitials() {
-    final firstName = _profileData['first_name'] ?? '';
-    final lastName = _profileData['last_name'] ?? '';
+    try {
+      final firstName = (_profileData['first_name'] ?? '').toString();
+      final lastName = (_profileData['last_name'] ?? '').toString();
 
-    if (firstName.isEmpty && lastName.isEmpty) return 'U';
+      if (firstName.isEmpty && lastName.isEmpty) return 'U';
 
-    return '${firstName.isNotEmpty ? firstName[0] : ''}${lastName.isNotEmpty ? lastName[0] : ''}'
-        .toUpperCase();
+      return '${firstName.isNotEmpty ? firstName[0] : ''}${lastName.isNotEmpty ? lastName[0] : ''}'
+          .toUpperCase();
+    } catch (e) {
+      print('🔧 Initials error: $e');
+      return 'U';
+    }
   }
 
   // Action Methods

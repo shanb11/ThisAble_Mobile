@@ -707,7 +707,7 @@ class ApiService {
     }
   }
 
-// ==================== DASHBOARD APIs ====================
+  // ==================== DASHBOARD APIs ====================
 
   // Dashboard Home Data
   static Future<Map<String, dynamic>> getDashboardHome() async {
@@ -855,6 +855,133 @@ class ApiService {
           'candidate/update_settings.php', settingsData);
     } catch (e) {
       return {'success': false, 'message': 'Error: $e'};
+    }
+  }
+// ==================== LANDING PAGE APIs ====================
+// ADD these methods to your existing ApiService class
+
+  /// Get jobs for landing page (calls your jobs.php)
+  static Future<Map<String, dynamic>> getLandingJobs({
+    String? search,
+    String? location,
+    String? category,
+    String? jobType,
+    int limit = 20,
+    int offset = 0,
+  }) async {
+    try {
+      // Build query parameters
+      Map<String, String> queryParams = {
+        'limit': limit.toString(),
+        'offset': offset.toString(),
+      };
+
+      if (search != null && search.isNotEmpty) queryParams['search'] = search;
+      if (location != null && location.isNotEmpty)
+        queryParams['location'] = location;
+      if (category != null && category.isNotEmpty)
+        queryParams['category'] = category;
+      if (jobType != null && jobType.isNotEmpty)
+        queryParams['job_type'] = jobType;
+
+      // Build URI - calls your shared/jobs.php
+      final uri = Uri.parse('http://192.168.1.4/ThisAble/api/shared/jobs.php')
+          .replace(
+              queryParameters: queryParams.isNotEmpty ? queryParams : null);
+
+      print('🔧 Fetching jobs from: $uri');
+
+      // Make request (no auth required for public landing page)
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+
+      print('🔧 Jobs API Response: ${response.statusCode}');
+      print('🔧 Jobs API Body: ${response.body}');
+
+      // Handle response
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data;
+      } else {
+        return {
+          'success': false,
+          'message': 'HTTP ${response.statusCode}: ${response.body}',
+          'data': {
+            'jobs': [],
+            'pagination': {
+              'total': 0,
+              'limit': limit,
+              'offset': offset,
+              'has_more': false
+            }
+          }
+        };
+      }
+    } catch (e) {
+      print('🔧 Error fetching jobs: $e');
+      return {
+        'success': false,
+        'message': 'Connection error: $e',
+        'data': {
+          'jobs': [],
+          'pagination': {
+            'total': 0,
+            'limit': limit,
+            'offset': offset,
+            'has_more': false
+          }
+        }
+      };
+    }
+  }
+
+  /// Get job categories with real counts (calls your categories.php)
+  static Future<Map<String, dynamic>> getJobCategories() async {
+    try {
+      final uri =
+          Uri.parse('http://192.168.1.4/ThisAble/api/jobs/categories.php');
+
+      print('🔧 Fetching categories from: $uri');
+
+      final response = await http.get(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+      );
+
+      print('🔧 Categories API Response: ${response.statusCode}');
+      print('🔧 Categories API Body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return data;
+      } else {
+        return {
+          'success': false,
+          'message': 'HTTP ${response.statusCode}: ${response.body}',
+          'data': {
+            'categories': [],
+            'stats': {'total_jobs': 0, 'recent_jobs': 0}
+          }
+        };
+      }
+    } catch (e) {
+      print('🔧 Error fetching categories: $e');
+      return {
+        'success': false,
+        'message': 'Connection error: $e',
+        'data': {
+          'categories': [],
+          'stats': {'total_jobs': 0, 'recent_jobs': 0}
+        }
+      };
     }
   }
 }

@@ -1316,37 +1316,158 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   /// Handle Google sign up with actual OAuth implementation
+  /// Enhanced Google Sign-Up Buttons with Account Selection
+  Widget _buildGoogleSignUpButtons() {
+    return Column(
+      children: [
+        // Main Google Sign-Up Button
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _isGoogleSignInLoading ? null : _handleGoogleSignUp,
+            icon: const Icon(
+              Icons.g_mobiledata,
+              color: Colors.blue,
+              size: 24,
+            ),
+            label: _isGoogleSignInLoading
+                ? const Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      ),
+                      SizedBox(width: 8),
+                      Text('Signing up...'),
+                    ],
+                  )
+                : Text(
+                    'Sign up with Google',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              side: BorderSide(color: Colors.grey[300]!),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(5),
+              ),
+              backgroundColor: Colors.white,
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 8),
+
+        // Alternative: Choose Different Account Button
+        SizedBox(
+          width: double.infinity,
+          child: TextButton.icon(
+            onPressed:
+                _isGoogleSignInLoading ? null : _handleChooseGoogleAccount,
+            icon: const Icon(
+              Icons.account_circle_outlined,
+              size: 18,
+            ),
+            label: Text(
+              'Choose different Google account',
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                color: AppColors.secondaryTeal,
+              ),
+            ),
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Handle Google sign up (tries current cached account first)
   void _handleGoogleSignUp() async {
     setState(() {
       _isGoogleSignInLoading = true;
     });
 
     try {
-      // Configure Google Sign-In
       final GoogleSignIn googleSignIn = GoogleSignIn(
         clientId:
             '83628564105-ebo9ng5modqfhkgepbm55rkv92d669l9.apps.googleusercontent.com',
         scopes: ['email', 'profile'],
       );
 
-      // Trigger Google Sign-In flow
+      // Try to use current signed-in account first
+      GoogleSignInAccount? googleUser = googleSignIn.currentUser;
+
+      if (googleUser == null) {
+        // No cached account, proceed with normal sign in
+        googleUser = await googleSignIn.signIn();
+      }
+
+      if (googleUser == null) {
+        setState(() {
+          _isGoogleSignInLoading = false;
+        });
+        return;
+      }
+
+      await _processGoogleSignUp(googleUser, googleSignIn);
+    } catch (e) {
+      _handleGoogleSignUpError(e);
+    }
+  }
+
+  /// Handle choosing a different Google account (forces account picker)
+  void _handleChooseGoogleAccount() async {
+    setState(() {
+      _isGoogleSignInLoading = true;
+    });
+
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn(
+        clientId:
+            '83628564105-ebo9ng5modqfhkgepbm55rkv92d669l9.apps.googleusercontent.com',
+        scopes: ['email', 'profile'],
+      );
+
+      // FORCE ACCOUNT SELECTION by signing out first
+      await googleSignIn.signOut();
+      await Future.delayed(const Duration(milliseconds: 300));
+
+      // Now sign in (will show account picker)
       final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
 
       if (googleUser == null) {
-        // User canceled sign-in
         setState(() {
           _isGoogleSignInLoading = false;
         });
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Google sign-up was cancelled'),
+            content: Text('Account selection was cancelled'),
             backgroundColor: Colors.orange,
           ),
         );
         return;
       }
 
+      print('🔧 Selected Account: ${googleUser.email}');
+      await _processGoogleSignUp(googleUser, googleSignIn);
+    } catch (e) {
+      _handleGoogleSignUpError(e);
+    }
+  }
+
+  /// Process Google sign-up (shared logic)
+  Future<void> _processGoogleSignUp(
+      GoogleSignInAccount googleUser, GoogleSignIn googleSignIn) async {
+    try {
       // Get authentication details
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
@@ -1355,11 +1476,11 @@ class _SignupScreenState extends State<SignupScreen> {
         throw Exception('Failed to get Google ID token');
       }
 
-      // First, check if user already exists
+      // Check if user already exists
       final checkResult = await ApiService.googleSignIn(
         idToken: googleAuth.idToken!,
         accessToken: googleAuth.accessToken,
-        action: 'login', // Check if existing user
+        action: 'login',
       );
 
       setState(() {
@@ -1370,13 +1491,13 @@ class _SignupScreenState extends State<SignupScreen> {
         final data = checkResult['data'];
 
         if (data['requires_profile_completion'] == true) {
-          // New Google user - proceed to complete profile in Step 2
+          // New Google user - proceed to complete profile
           final googleUserInfo = data['google_user_info'];
 
           setState(() {
             _isGoogleUser = true;
             _googleUserData = googleUserInfo;
-            _googleIdToken = googleAuth.idToken; // ← ADD THIS LINE
+            _googleIdToken = googleAuth.idToken;
 
             // Pre-fill form fields
             _firstNameController.text = googleUserInfo['first_name'] ?? '';
@@ -1384,7 +1505,6 @@ class _SignupScreenState extends State<SignupScreen> {
             _emailController.text = googleUserInfo['email'] ?? '';
           });
 
-          // Show success message and proceed to Step 2
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -1393,24 +1513,22 @@ class _SignupScreenState extends State<SignupScreen> {
             ),
           );
 
-          // Go to Step 2 to complete profile
           _goToStep(2);
         } else {
-          // Existing Google user - redirect to login
+          // Existing Google user
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content:
-                  Text('Account already exists. Please use the login page.'),
+            SnackBar(
+              content: Text(
+                'Account ${googleUser.email} already exists. Please use the login page.',
+              ),
               backgroundColor: Colors.blue,
             ),
           );
 
-          // Sign out and redirect to login
           await googleSignIn.signOut();
-          AppRoutes.goToCandidateLogin(context);
+          Navigator.pushReplacementNamed(context, AppRoutes.candidateLogin);
         }
       } else {
-        // Error in Google authentication
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Google sign-up failed: ${checkResult['message']}'),
@@ -1419,16 +1537,31 @@ class _SignupScreenState extends State<SignupScreen> {
         );
       }
     } catch (e) {
-      setState(() {
-        _isGoogleSignInLoading = false;
-      });
+      throw e; // Re-throw to be caught by the calling method
+    }
+  }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Google sign-up error: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+  /// Handle Google sign-up errors (shared error handling)
+  void _handleGoogleSignUpError(dynamic e) {
+    setState(() {
+      _isGoogleSignInLoading = false;
+    });
+
+    print('🔧 Google Sign-Up Error: $e');
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Google sign-up error: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
+
+    // Clean up on error
+    try {
+      final GoogleSignIn googleSignIn = GoogleSignIn();
+      googleSignIn.signOut();
+    } catch (cleanupError) {
+      print('🔧 Cleanup error: $cleanupError');
     }
   }
 

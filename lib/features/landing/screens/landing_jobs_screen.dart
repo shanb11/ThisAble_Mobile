@@ -9,6 +9,7 @@ import '../../../shared/widgets/loading_widget.dart';
 import '../widgets/landing_navbar.dart';
 import '../widgets/landing_footer.dart';
 import '../modals/job_listings_modal.dart';
+import '../../../core/services/api_service.dart'; // ← ADDED THIS LINE
 
 /// Landing Jobs Screen - Complete mobile version of landing_jobs.php
 /// Mirrors your web jobs page structure exactly: hero + search + filters + grid + alerts
@@ -36,12 +37,17 @@ class _LandingJobsScreenState extends State<LandingJobsScreen> {
   List<Map<String, dynamic>> jobs = [];
   List<Map<String, dynamic>> filteredJobs = [];
   int currentPage = 1;
-  final int jobsPerPage = 12; // matches your web pagination
+  final int jobsPerPage = 12;
+
+  // ← ADDED: Categories state for real API data
+  List<Map<String, dynamic>> categories = [];
+  bool isLoadingCategories = true;
 
   @override
   void initState() {
     super.initState();
     _loadJobs();
+    _loadCategories(); // ← ADDED: Load real categories
   }
 
   @override
@@ -50,6 +56,77 @@ class _LandingJobsScreenState extends State<LandingJobsScreen> {
     _locationController.dispose();
     _alertEmailController.dispose();
     super.dispose();
+  }
+
+  // ← ADDED: Load real categories from API (same as home page)
+  Future<void> _loadCategories() async {
+    setState(() => isLoadingCategories = true);
+
+    try {
+      print('🔧 Loading job categories for jobs page...');
+
+      final response = await ApiService.getJobCategories();
+
+      if (response['success'] == true) {
+        final categoriesData = response['data']['categories'] as List<dynamic>;
+
+        setState(() {
+          categories = categoriesData.cast<Map<String, dynamic>>();
+          isLoadingCategories = false;
+        });
+
+        print('✅ Loaded ${categories.length} categories for jobs page');
+      } else {
+        // Fallback to hardcoded if API fails
+        _loadFallbackCategories();
+      }
+    } catch (e) {
+      print('⚠️ Error loading categories: $e');
+      _loadFallbackCategories();
+    }
+  }
+
+  // ← ADDED: Fallback categories (same as home page)
+  void _loadFallbackCategories() {
+    categories = [
+      {
+        'id': 'education',
+        'name': 'Education & Training',
+        'icon': 'graduation-cap',
+        'count': '0+'
+      },
+      {
+        'id': 'office',
+        'name': 'Office Administration',
+        'icon': 'briefcase',
+        'count': '0+'
+      },
+      {
+        'id': 'customer',
+        'name': 'Customer Service',
+        'icon': 'headset',
+        'count': '0+'
+      },
+      {
+        'id': 'business',
+        'name': 'Business Administration',
+        'icon': 'chart-line',
+        'count': '0+'
+      },
+      {
+        'id': 'healthcare',
+        'name': 'Healthcare & Wellness',
+        'icon': 'heartbeat',
+        'count': '0+'
+      },
+      {
+        'id': 'finance',
+        'name': 'Finance & Accounting',
+        'icon': 'dollar-sign',
+        'count': '0+'
+      },
+    ];
+    setState(() => isLoadingCategories = false);
   }
 
   @override
@@ -71,7 +148,7 @@ class _LandingJobsScreenState extends State<LandingJobsScreen> {
             // Job Search & Filters Section (matches your web search section)
             _buildSearchFiltersSection(),
 
-            // Featured Categories (matches your web categories)
+            // Featured Categories (matches your web categories) - ← NOW USES REAL API DATA
             _buildFeaturedCategories(),
 
             // Jobs Grid Section (matches your web jobs grid)
@@ -88,298 +165,228 @@ class _LandingJobsScreenState extends State<LandingJobsScreen> {
     );
   }
 
+  /// Load Jobs Data from Real API
+  Future<void> _loadJobs() async {
+    setState(() => isLoadingJobs = true);
+
+    try {
+      print('🔧 Loading jobs from database...');
+
+      // Call your real API
+      final response = await ApiService.getLandingJobs(
+        search: _jobSearchController.text.isNotEmpty
+            ? _jobSearchController.text
+            : null,
+        location: _locationController.text.isNotEmpty
+            ? _locationController.text
+            : null,
+        category: selectedCategory,
+        limit: 50,
+      );
+
+      print('🔧 API Response: ${response['success']}');
+
+      if (response['success'] == true) {
+        final jobsData = response['data']['jobs'] as List<dynamic>;
+
+        // Map API response to expected format
+        final mappedJobs = jobsData.map<Map<String, dynamic>>((job) {
+          return {
+            'id': job['job_id'],
+            'title': job['job_title'] ?? job['title'],
+            'company': job['company_name'] ?? job['company'],
+            'location': job['location'],
+            'type': job['employment_type'] ?? job['type'] ?? 'Full-time',
+            'category': _mapJobCategory(job['department'] ?? ''),
+            'salary': job['salary_range'] ?? 'Competitive',
+            'description': job['job_description'] ?? job['description'] ?? '',
+            'posted': _formatPostedDate(job['posted_at'] ?? job['created_at']),
+            'job_id': job['job_id'],
+            'employer_id': job['employer_id'],
+            'requirements': job['job_requirements'],
+            'deadline': job['application_deadline'],
+            'remote_available': job['remote_work_available'] ?? false,
+            'flexible_schedule': job['flexible_schedule'] ?? false,
+          };
+        }).toList();
+
+        setState(() {
+          jobs = mappedJobs;
+          filteredJobs = List.from(jobs);
+          isLoadingJobs = false;
+        });
+
+        print('✅ Successfully loaded ${jobs.length} real jobs from database!');
+
+        if (jobs.isNotEmpty) {
+          print(
+              '📋 First job: ${jobs.first['title']} at ${jobs.first['company']}');
+        }
+      } else {
+        setState(() {
+          jobs = [];
+          filteredJobs = [];
+          isLoadingJobs = false;
+        });
+
+        print('❌ API Error: ${response['message']}');
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'Failed to load jobs: ${response['message'] ?? 'Unknown error'}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('❌ Network Error: $e');
+
+      setState(() {
+        jobs = [];
+        filteredJobs = [];
+        isLoadingJobs = false;
+      });
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Network error: Please check your connection'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+
+    _applyFilters();
+  }
+
+  /// Map job department to category for filtering
+  String _mapJobCategory(String department) {
+    final categoryMap = {
+      'IT': 'technology',
+      'Technology': 'technology',
+      'Healthcare': 'healthcare',
+      'Education': 'education',
+      'Finance': 'finance',
+      'Customer Service': 'customer',
+      'Administrative': 'office',
+      'Marketing': 'business',
+      'Sales': 'business',
+      'Human Resources': 'business',
+    };
+
+    return categoryMap[department] ?? 'other';
+  }
+
+  /// Format posted date to user-friendly string
+  String _formatPostedDate(dynamic postedAt) {
+    if (postedAt == null) return 'Recently';
+
+    try {
+      final postedDate = DateTime.parse(postedAt.toString());
+      final now = DateTime.now();
+      final difference = now.difference(postedDate).inDays;
+
+      if (difference == 0) {
+        return 'Today';
+      } else if (difference == 1) {
+        return 'Yesterday';
+      } else if (difference < 7) {
+        return '$difference days ago';
+      } else if (difference < 30) {
+        return '${(difference / 7).floor()} weeks ago';
+      } else {
+        return '${(difference / 30).floor()} months ago';
+      }
+    } catch (e) {
+      return 'Recently';
+    }
+  }
+
   /// Jobs Hero Section - matches your CSS .jobs-hero
   Widget _buildJobsHero() {
     return Container(
       width: double.infinity,
-      color: AppColors.secondaryTeal, // matches background-color: #257180
-      padding: const EdgeInsets.symmetric(
-          vertical: 50, horizontal: 20), // matches padding: 50px 0
+      color: AppColors.secondaryTeal,
+      padding: const EdgeInsets.symmetric(vertical: 50, horizontal: 20),
       child: Column(
         children: [
-          // Hero Title (matches .jobs-hero h1)
           Text(
             'Find Your Perfect Job',
-            style: AppTextStyles.heroTitle
-                .copyWith(fontSize: 32), // Adjusted for jobs page
+            style: AppTextStyles.heroTitle.copyWith(fontSize: 32),
             textAlign: TextAlign.center,
           ),
-
-          const SizedBox(height: 15), // matches margin-bottom: 15px
-
-          // Hero Description (matches .jobs-hero p)
+          const SizedBox(height: 15),
           Container(
-            constraints:
-                const BoxConstraints(maxWidth: 600), // matches max-width: 600px
+            constraints: const BoxConstraints(maxWidth: 600),
             child: Text(
               'Explore thousands of job opportunities from inclusive employers. Find the perfect role that matches your skills and career goals.',
-              style: AppTextStyles.heroSubtitle
-                  .copyWith(fontSize: 16), // Adjusted for jobs page
+              style: AppTextStyles.heroSubtitle,
               textAlign: TextAlign.center,
             ),
           ),
-
-          const SizedBox(height: 25), // matches margin-bottom: 25px
-
-          // Quick Search (matches .quick-search)
-          _buildQuickSearch(),
         ],
       ),
     );
   }
 
-  /// Quick Search - matches your web .quick-search structure
-  Widget _buildQuickSearch() {
-    return Container(
-      constraints:
-          const BoxConstraints(maxWidth: 600), // matches max-width: 600px
-      child: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(5),
-          boxShadow: const [
-            BoxShadow(
-              color: AppColors.shadowMedium,
-              blurRadius: 15,
-              offset: Offset(0, 5),
-            ),
-          ],
-        ),
-        child: MediaQuery.of(context).size.width > 768
-            ? _buildDesktopQuickSearch()
-            : _buildMobileQuickSearch(),
-      ),
-    );
-  }
-
-  /// Desktop Quick Search Layout
-  Widget _buildDesktopQuickSearch() {
-    return Row(
-      children: [
-        // Job Search Input
-        Expanded(
-          child: _buildQuickSearchInput(
-            controller: _jobSearchController,
-            hintText: 'Job title or keyword',
-            icon: Icons.search,
-          ),
-        ),
-
-        // Divider
-        Container(width: 1, height: 50, color: AppColors.borderLight),
-
-        // Location Input
-        Expanded(
-          child: _buildQuickSearchInput(
-            controller: _locationController,
-            hintText: 'Location',
-            icon: Icons.location_on_outlined,
-          ),
-        ),
-
-        // Search Button
-        CustomButton(
-          text: 'Search',
-          onPressed: _handleQuickSearch,
-          type: CustomButtonType.secondary,
-          padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 15),
-        ),
-      ],
-    );
-  }
-
-  /// Mobile Quick Search Layout
-  Widget _buildMobileQuickSearch() {
-    return Column(
-      children: [
-        _buildQuickSearchInput(
-          controller: _jobSearchController,
-          hintText: 'Job title or keyword',
-          icon: Icons.search,
-        ),
-        Container(height: 1, color: AppColors.borderLight),
-        _buildQuickSearchInput(
-          controller: _locationController,
-          hintText: 'Location',
-          icon: Icons.location_on_outlined,
-        ),
-        Padding(
-          padding: const EdgeInsets.all(15),
-          child: SizedBox(
-            width: double.infinity,
-            child: CustomButton(
-              text: 'Search Jobs',
-              onPressed: _handleQuickSearch,
-              type: CustomButtonType.secondary,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// Quick Search Input Helper
-  Widget _buildQuickSearchInput({
-    required TextEditingController controller,
-    required String hintText,
-    required IconData icon,
-  }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15),
-      child: Row(
-        children: [
-          Icon(icon, color: AppColors.textLight, size: 20),
-          const SizedBox(width: 10),
-          Expanded(
-            child: TextField(
-              controller: controller,
-              style: AppTextStyles.formInput,
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                hintText: hintText,
-                hintStyle: AppTextStyles.formPlaceholder,
-                contentPadding: const EdgeInsets.symmetric(vertical: 15),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  /// Search & Filters Section - matches your web .search-filters
+  /// Search and Filters Section
   Widget _buildSearchFiltersSection() {
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.symmetric(
-          vertical: 40, horizontal: 20), // matches padding: 40px 0
+      padding: const EdgeInsets.symmetric(vertical: 30, horizontal: 20),
       child: Column(
         children: [
-          // Section Title
           Text(
-            'Refine Your Search',
+            'Search Jobs',
             style: AppTextStyles.sectionTitle.copyWith(fontSize: 24),
             textAlign: TextAlign.center,
           ),
+          const SizedBox(height: 20),
 
-          const SizedBox(height: 30),
-
-          // Filters Grid (matches .filters-grid)
-          _buildFiltersGrid(),
+          // Search bars
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _jobSearchController,
+                  decoration: const InputDecoration(
+                    hintText: 'Job title or keyword',
+                    prefixIcon: Icon(Icons.search),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: TextField(
+                  controller: _locationController,
+                  decoration: const InputDecoration(
+                    hintText: 'Location',
+                    prefixIcon: Icon(Icons.location_on),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ),
+            ],
+          ),
 
           const SizedBox(height: 20),
 
-          // Apply Filters Button
-          Center(
-            child: CustomButton(
-              text: 'Apply Filters',
-              onPressed: _applyFilters,
-              type: CustomButtonType.primary,
-            ),
+          CustomButton(
+            text: 'Search Jobs',
+            onPressed: _handleJobSearch,
+            type: CustomButtonType.primary,
           ),
         ],
       ),
     );
   }
 
-  /// Filters Grid - matches your web filter options
-  Widget _buildFiltersGrid() {
-    return GridView.count(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      crossAxisCount: MediaQuery.of(context).size.width > 768 ? 2 : 1,
-      crossAxisSpacing: 20,
-      mainAxisSpacing: 20,
-      childAspectRatio: MediaQuery.of(context).size.width > 768 ? 3 : 4,
-      children: [
-        // Category Filter
-        _buildFilterDropdown(
-          label: 'Category',
-          value: selectedCategory,
-          items: [
-            const DropdownMenuItem(value: null, child: Text('All Categories')),
-            ...AppConstants.jobCategories.map((cat) =>
-                DropdownMenuItem(value: cat['id'], child: Text(cat['name']!))),
-          ],
-          onChanged: (value) => setState(() => selectedCategory = value),
-        ),
-
-        // Job Type Filter
-        _buildFilterDropdown(
-          label: 'Job Type',
-          value: selectedJobType,
-          items: [
-            const DropdownMenuItem(value: null, child: Text('All Types')),
-            ...AppConstants.jobTypes.map(
-                (type) => DropdownMenuItem(value: type, child: Text(type))),
-          ],
-          onChanged: (value) => setState(() => selectedJobType = value),
-        ),
-
-        // Salary Range Filter
-        _buildFilterDropdown(
-          label: 'Salary Range',
-          value: selectedSalaryRange,
-          items: const [
-            DropdownMenuItem(value: null, child: Text('Any Salary')),
-            DropdownMenuItem(
-                value: '30k-50k', child: Text('\$30,000 - \$50,000')),
-            DropdownMenuItem(
-                value: '50k-70k', child: Text('\$50,000 - \$70,000')),
-            DropdownMenuItem(
-                value: '70k-100k', child: Text('\$70,000 - \$100,000')),
-            DropdownMenuItem(value: '100k+', child: Text('\$100,000+')),
-          ],
-          onChanged: (value) => setState(() => selectedSalaryRange = value),
-        ),
-
-        // Experience Level Filter
-        _buildFilterDropdown(
-          label: 'Experience Level',
-          value: selectedExperience,
-          items: const [
-            DropdownMenuItem(value: null, child: Text('Any Experience')),
-            DropdownMenuItem(value: 'entry', child: Text('Entry Level')),
-            DropdownMenuItem(value: 'mid', child: Text('Mid Level')),
-            DropdownMenuItem(value: 'senior', child: Text('Senior Level')),
-            DropdownMenuItem(value: 'executive', child: Text('Executive')),
-          ],
-          onChanged: (value) => setState(() => selectedExperience = value),
-        ),
-      ],
-    );
-  }
-
-  /// Filter Dropdown Helper
-  Widget _buildFilterDropdown({
-    required String label,
-    required String? value,
-    required List<DropdownMenuItem<String>> items,
-    required Function(String?) onChanged,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label, style: AppTextStyles.formLabel),
-        const SizedBox(height: 8),
-        DropdownButtonFormField<String>(
-          value: value,
-          decoration: InputDecoration(
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(5),
-              borderSide: const BorderSide(color: AppColors.borderColor),
-            ),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
-          ),
-          items: items,
-          onChanged: onChanged,
-        ),
-      ],
-    );
-  }
-
-  /// Featured Categories - matches your web featured categories
+  /// ← UPDATED: Featured Categories - now uses REAL API data instead of hardcoded
   Widget _buildFeaturedCategories() {
     return Container(
       color: AppColors.backgroundColor,
@@ -391,35 +398,39 @@ class _LandingJobsScreenState extends State<LandingJobsScreen> {
             style: AppTextStyles.sectionTitle.copyWith(fontSize: 24),
             textAlign: TextAlign.center,
           ),
-
           const SizedBox(height: 30),
 
-          // Categories Grid (first 6 categories)
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: MediaQuery.of(context).size.width > 992
-                  ? 3
-                  : MediaQuery.of(context).size.width > 768
-                      ? 2
-                      : 1,
-              crossAxisSpacing: 20,
-              mainAxisSpacing: 20,
-              childAspectRatio:
-                  MediaQuery.of(context).size.width > 768 ? 1.2 : 1.5,
-            ),
-            itemCount: 6, // Show first 6 categories
-            itemBuilder: (context, index) {
-              final category = AppConstants.jobCategories[index];
-              return CategoryCard(
-                title: category['name']!,
-                count: category['count']!,
-                icon: _getCategoryIcon(category['icon']!),
-                onTap: () => _handleCategorySearch(category['id']!),
-              );
-            },
-          ),
+          // ← CHANGED: Show loading or real categories instead of hardcoded
+          isLoadingCategories
+              ? const Center(child: CircularProgressIndicator())
+              : GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: MediaQuery.of(context).size.width > 992
+                        ? 3
+                        : MediaQuery.of(context).size.width > 768
+                            ? 2
+                            : 1,
+                    crossAxisSpacing: 20,
+                    mainAxisSpacing: 20,
+                    childAspectRatio:
+                        MediaQuery.of(context).size.width > 768 ? 1.2 : 1.5,
+                  ),
+                  itemCount: categories.length > 6
+                      ? 6
+                      : categories.length, // Show first 6
+                  itemBuilder: (context, index) {
+                    final category =
+                        categories[index]; // ← CHANGED: Use real categories
+                    return CategoryCard(
+                      title: category['name'] ?? 'Unknown',
+                      count: category['count']?.toString() ?? '0',
+                      icon: _getCategoryIcon(category['icon'] ?? 'briefcase'),
+                      onTap: () => _handleCategorySearch(category['id'] ?? ''),
+                    );
+                  },
+                ),
         ],
       ),
     );
@@ -573,23 +584,11 @@ class _LandingJobsScreenState extends State<LandingJobsScreen> {
           icon: const Icon(Icons.chevron_left),
         ),
 
-        // Page Numbers
-        ...List.generate(totalPages, (index) {
-          final page = index + 1;
-          return Container(
-            margin: const EdgeInsets.symmetric(horizontal: 4),
-            child: TextButton(
-              onPressed: () => _goToPage(page),
-              style: TextButton.styleFrom(
-                backgroundColor:
-                    page == currentPage ? AppColors.primaryOrange : null,
-                foregroundColor:
-                    page == currentPage ? Colors.white : AppColors.textPrimary,
-              ),
-              child: Text('$page'),
-            ),
-          );
-        }),
+        // Page Info
+        Text(
+          'Page $currentPage of $totalPages',
+          style: AppTextStyles.bodyMedium,
+        ),
 
         // Next Button
         IconButton(
@@ -602,104 +601,49 @@ class _LandingJobsScreenState extends State<LandingJobsScreen> {
     );
   }
 
-  /// Job Alerts Section - matches your web job alerts
+  /// Job Alerts Section
   Widget _buildJobAlertsSection() {
     return Container(
-      color: AppColors.inclusiveBackground,
+      color: AppColors.backgroundColor,
       padding: const EdgeInsets.symmetric(vertical: 50, horizontal: 20),
-      child: Container(
-        constraints: const BoxConstraints(maxWidth: 600),
-        child: Column(
-          children: [
-            Text(
-              'Get Job Alerts',
-              style: AppTextStyles.sectionTitle.copyWith(fontSize: 24),
-              textAlign: TextAlign.center,
-            ),
-
-            const SizedBox(height: 15),
-
-            Text(
-              'Never miss a job opportunity! Subscribe to receive email alerts when new jobs matching your criteria are posted.',
-              style: AppTextStyles.bodyMedium,
-              textAlign: TextAlign.center,
-            ),
-
-            const SizedBox(height: 30),
-
-            // Alert Signup Form
-            Container(
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(5),
-                boxShadow: const [
-                  BoxShadow(
-                    color: AppColors.shadowLight,
-                    blurRadius: 15,
-                    offset: Offset(0, 5),
+      child: Column(
+        children: [
+          Text(
+            'Get Job Alerts',
+            style: AppTextStyles.sectionTitle.copyWith(fontSize: 24),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+          Text(
+            'Stay updated with the latest job opportunities that match your preferences.',
+            style: AppTextStyles.bodyMedium,
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 30),
+          Container(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _alertEmailController,
+                    decoration: const InputDecoration(
+                      hintText: 'Enter your email',
+                      border: OutlineInputBorder(),
+                    ),
                   ),
-                ],
-              ),
-              child: MediaQuery.of(context).size.width > 768
-                  ? _buildDesktopAlertSignup()
-                  : _buildMobileAlertSignup(),
+                ),
+                const SizedBox(width: 10),
+                CustomButton(
+                  text: 'Subscribe',
+                  onPressed: _handleJobAlertSignup,
+                  type: CustomButtonType.primary,
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
-    );
-  }
-
-  /// Desktop Alert Signup
-  Widget _buildDesktopAlertSignup() {
-    return Row(
-      children: [
-        Expanded(
-          child: TextField(
-            controller: _alertEmailController,
-            decoration: const InputDecoration(
-              border: InputBorder.none,
-              hintText: 'Enter your email address',
-              contentPadding: EdgeInsets.all(15),
-              prefixIcon: Icon(Icons.email_outlined),
-            ),
-          ),
-        ),
-        CustomButton(
-          text: 'Subscribe',
-          onPressed: _handleJobAlertSignup,
-          type: CustomButtonType.primary,
-          padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 15),
-        ),
-      ],
-    );
-  }
-
-  /// Mobile Alert Signup
-  Widget _buildMobileAlertSignup() {
-    return Column(
-      children: [
-        TextField(
-          controller: _alertEmailController,
-          decoration: const InputDecoration(
-            border: InputBorder.none,
-            hintText: 'Enter your email address',
-            contentPadding: EdgeInsets.all(15),
-            prefixIcon: Icon(Icons.email_outlined),
-          ),
-        ),
-        Padding(
-          padding: const EdgeInsets.all(15),
-          child: SizedBox(
-            width: double.infinity,
-            child: CustomButton(
-              text: 'Subscribe to Job Alerts',
-              onPressed: _handleJobAlertSignup,
-              type: CustomButtonType.primary,
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -707,195 +651,40 @@ class _LandingJobsScreenState extends State<LandingJobsScreen> {
   // EVENT HANDLERS & BUSINESS LOGIC
   // ===========================================
 
-  /// Load Jobs Data (simulates API call)
-  Future<void> _loadJobs() async {
-    setState(() => isLoadingJobs = true);
-
-    // Simulate API delay
-    await Future.delayed(const Duration(milliseconds: 1000));
-
-    // Sample job data (matches your web structure)
-    final jobsData = [
-      {
-        'id': 1,
-        'title': 'Elementary School Teacher',
-        'company': 'Bright Future Academy',
-        'location': 'New York',
-        'type': 'Full-time',
-        'category': 'education',
-        'salary': '\$45,000 - \$60,000',
-        'description':
-            'Looking for a passionate elementary school teacher to educate and inspire young minds.',
-        'posted': '3 days ago',
-      },
-      {
-        'id': 2,
-        'title': 'Administrative Assistant',
-        'company': 'Global Solutions Inc.',
-        'location': 'Chicago',
-        'type': 'Full-time',
-        'category': 'office',
-        'salary': '\$35,000 - \$45,000',
-        'description':
-            'Seeking an organized administrative assistant to support our executive team.',
-        'posted': '1 week ago',
-      },
-      {
-        'id': 3,
-        'title': 'Customer Service Representative',
-        'company': 'Tech Support Central',
-        'location': 'Remote',
-        'type': 'Part-time',
-        'category': 'customer',
-        'salary': '\$18 - \$22 per hour',
-        'description':
-            'Join our remote customer service team providing technical support to customers.',
-        'posted': '2 days ago',
-      },
-      {
-        'id': 4,
-        'title': 'Business Analyst',
-        'company': 'Finance Corp',
-        'location': 'San Francisco',
-        'type': 'Full-time',
-        'category': 'business',
-        'salary': '\$70,000 - \$90,000',
-        'description':
-            'Seeking a business analyst to help improve our operational processes.',
-        'posted': '1 month ago',
-      },
-      {
-        'id': 5,
-        'title': 'Registered Nurse',
-        'company': 'Community Health Center',
-        'location': 'Miami',
-        'type': 'Full-time',
-        'category': 'healthcare',
-        'salary': '\$65,000 - \$85,000',
-        'description': 'Join our healthcare team as a registered nurse.',
-        'posted': '2 weeks ago',
-      },
-      {
-        'id': 6,
-        'title': 'Bookkeeper',
-        'company': 'Small Business Solutions',
-        'location': 'Atlanta',
-        'type': 'Part-time',
-        'category': 'finance',
-        'salary': '\$25 - \$30 per hour',
-        'description': 'Part-time bookkeeper needed for local accounting firm.',
-        'posted': '5 days ago',
-      },
-      // Add more jobs for pagination testing
-      {
-        'id': 7,
-        'title': 'Software Developer',
-        'company': 'Tech Innovations',
-        'location': 'Remote',
-        'type': 'Full-time',
-        'category': 'technology',
-        'salary': '\$80,000 - \$120,000',
-        'description': 'Experienced developer needed for innovative projects.',
-        'posted': '1 day ago',
-      },
-      {
-        'id': 8,
-        'title': 'Marketing Coordinator',
-        'company': 'Creative Agency',
-        'location': 'Los Angeles',
-        'type': 'Full-time',
-        'category': 'business',
-        'salary': '\$50,000 - \$65,000',
-        'description': 'Creative marketing coordinator for growing agency.',
-        'posted': '4 days ago',
-      },
-    ];
-
-    setState(() {
-      jobs = jobsData;
-      filteredJobs = jobsData;
-      isLoadingJobs = false;
-    });
+  /// Handle search button press
+  Future<void> _handleJobSearch() async {
+    await _loadJobs(); // This will now use the search parameters
   }
 
-  /// Handle Quick Search
-  void _handleQuickSearch() {
-    final keyword = _jobSearchController.text.trim().toLowerCase();
-    final location = _locationController.text.trim().toLowerCase();
-
-    List<Map<String, dynamic>> results = jobs;
-
-    // Filter by keyword
-    if (keyword.isNotEmpty) {
-      results = results
-          .where((job) =>
-              job['title'].toString().toLowerCase().contains(keyword) ||
-              job['company'].toString().toLowerCase().contains(keyword) ||
-              job['description'].toString().toLowerCase().contains(keyword))
-          .toList();
-    }
-
-    // Filter by location
-    if (location.isNotEmpty) {
-      results = results
-          .where((job) =>
-              job['location'].toString().toLowerCase().contains(location))
-          .toList();
-    }
-
+  /// Handle category filter
+  Future<void> _handleCategorySearch(String categoryId) async {
     setState(() {
-      filteredJobs = results;
-      currentPage = 1;
+      selectedCategory = categoryId;
     });
+    await _loadJobs(); // Reload with new category filter
   }
 
-  /// Apply Advanced Filters
-  void _applyFilters() {
-    List<Map<String, dynamic>> results = jobs;
-
-    // Apply category filter
-    if (selectedCategory != null && selectedCategory!.isNotEmpty) {
-      results =
-          results.where((job) => job['category'] == selectedCategory).toList();
-    }
-
-    // Apply job type filter
-    if (selectedJobType != null && selectedJobType!.isNotEmpty) {
-      results = results.where((job) => job['type'] == selectedJobType).toList();
-    }
-
-    // Apply salary range filter (simplified logic)
-    if (selectedSalaryRange != null && selectedSalaryRange!.isNotEmpty) {
-      // Add salary filtering logic based on your requirements
-    }
-
-    setState(() {
-      filteredJobs = results;
-      currentPage = 1;
-    });
-  }
-
-  /// Clear All Filters
-  void _clearFilters() {
+  /// Clear all filters
+  Future<void> _clearFilters() async {
     setState(() {
       selectedCategory = null;
       selectedJobType = null;
       selectedSalaryRange = null;
       selectedExperience = null;
-      filteredJobs = jobs;
-      currentPage = 1;
     });
 
     _jobSearchController.clear();
     _locationController.clear();
+
+    await _loadJobs(); // Reload without filters
   }
 
-  /// Handle Category Search
-  void _handleCategorySearch(String categoryId) {
+  /// Apply Filters (local filtering)
+  void _applyFilters() {
     setState(() {
-      selectedCategory = categoryId;
+      filteredJobs = List.from(jobs);
+      // Add additional local filtering logic here if needed
     });
-    _applyFilters();
   }
 
   /// Handle Sort Change

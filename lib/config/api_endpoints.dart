@@ -7,7 +7,7 @@ class AppConstants {
 
   // API Configuration (Updated for your ThisAble project)
   static const String baseUrl =
-      'http://192.168.1.4/ThisAble/api'; // UPDATED PATH!
+      'http://192.168.1.3/ThisAble/api'; // UPDATED PATH!
   static const String apiVersion = 'v1';
 
   // API Endpoints - Landing Pages

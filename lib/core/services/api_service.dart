@@ -885,7 +885,7 @@ class ApiService {
         queryParams['job_type'] = jobType;
 
       // Build URI - calls your shared/jobs.php
-      final uri = Uri.parse('http://192.168.1.4/ThisAble/api/shared/jobs.php')
+      final uri = Uri.parse('http://192.168.1.3/ThisAble/api/shared/jobs.php')
           .replace(
               queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
@@ -943,8 +943,8 @@ class ApiService {
   /// Get job categories with real counts (calls your categories.php)
   static Future<Map<String, dynamic>> getJobCategories() async {
     try {
-      final uri =
-          Uri.parse('http://192.168.1.4/ThisAble/api/jobs/categories.php');
+      // FIX: Use config instead of hardcoded IP!
+      final uri = Uri.parse(AppConstants.landingJobCategories);
 
       print('🔧 Fetching categories from: $uri');
 

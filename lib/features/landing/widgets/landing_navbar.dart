@@ -147,38 +147,62 @@ class LandingNavbar extends StatelessWidget {
   }
 
   /// Individual Navigation Link - matches your nav ul li a styling
+  /// Individual Navigation Link - IMPROVED with better responsiveness
   Widget _buildNavLink({
     required String text,
     required bool isActive,
     VoidCallback? onPressed,
   }) {
-    return GestureDetector(
+    return InkWell(
+      // CHANGED: Use InkWell instead of GestureDetector for better feedback
       onTap: onPressed,
+      borderRadius: BorderRadius.circular(5), // Matches container border radius
+      splashColor: AppColors.primaryOrange.withOpacity(0.1), // Visual feedback
+      highlightColor: AppColors.primaryOrange.withOpacity(0.05),
       child: Container(
-        // Matches your CSS: padding: 5px 10px, border-radius: 5px
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        // EXPANDED: Bigger tap area for easier tapping
+        padding: const EdgeInsets.symmetric(
+            horizontal: 15, vertical: 10), // INCREASED padding
         decoration: BoxDecoration(
-          // Matches your CSS: nav ul li a:hover, nav ul li a.active background-color: #F2E5BF
           color: isActive ? AppColors.accentBeige : Colors.transparent,
           borderRadius: BorderRadius.circular(5),
         ),
         child: Text(
           text,
-          style: isActive
-              ? AppTextStyles
-                    .navItemActive // Active link styling
-              : AppTextStyles.navItem, // Normal link styling
+          style: isActive ? AppTextStyles.navItemActive : AppTextStyles.navItem,
         ),
       ),
     );
   }
 
-  /// Sign In Button - matches your .sign-in .btn-primary
   Widget _buildSignInButton(BuildContext context) {
-    return CustomButton(
-      text: 'Sign In',
-      onPressed: () => AppRoutes.goToCandidateLogin(context),
-      type: CustomButtonType.primary, // matches .btn-primary
+    return Material(
+      // Wrap in Material for better ink effects
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => AppRoutes.goToCandidateLogin(context),
+        borderRadius: BorderRadius.circular(5),
+        splashColor: Colors.white.withOpacity(0.2),
+        highlightColor: Colors.white.withOpacity(0.1),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          decoration: BoxDecoration(
+            color: AppColors.primaryOrange,
+            borderRadius: BorderRadius.circular(5),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.primaryOrange.withOpacity(0.3),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Text(
+            'Sign In',
+            style: AppTextStyles.buttonPrimary, // FIXED: Use correct style
+          ),
+        ),
+      ),
     );
   }
 }

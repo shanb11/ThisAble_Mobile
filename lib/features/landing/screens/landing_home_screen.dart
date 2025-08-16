@@ -11,7 +11,7 @@ import '../modals/job_listings_modal.dart';
 import '../modals/post_job_modal.dart';
 
 /// Landing Home Screen - Exact mobile version of index.php
-/// Mirrors your web structure: navbar + hero + categories + inclusive + footer
+/// FIXED: Proper navigation and active states using YOUR ACTUAL theme structure
 class LandingHomeScreen extends StatefulWidget {
   const LandingHomeScreen({super.key});
 
@@ -35,13 +35,21 @@ class _LandingHomeScreenState extends State<LandingHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor:
-          AppColors.backgroundColor, // matches body background-color: #f9f9f9
+      backgroundColor: AppColors.backgroundColor, // Using YOUR actual color
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Navigation Bar (mirrors includes/landing/landing_navbar.php)
+            // Navigation Bar - FIXED: Now passes current page and proper callbacks
             LandingNavbar(
+              currentPage: 'home', // FIXED: Identify this as home page
+              onHomePressed: () {
+                // FIXED: Home navigation (refresh current page)
+                Navigator.pushNamedAndRemoveUntil(
+                  context,
+                  AppRoutes.landingHome,
+                  (route) => false,
+                );
+              },
               onAboutPressed: () => AppRoutes.goToAbout(context),
               onJobsPressed: () => AppRoutes.goToJobs(context),
             ),
@@ -81,7 +89,7 @@ class _LandingHomeScreenState extends State<LandingHomeScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Please enter a job title or keyword'),
-          backgroundColor: AppColors.errorRed,
+          backgroundColor: AppColors.errorRed, // Using YOUR actual color
         ),
       );
       return;

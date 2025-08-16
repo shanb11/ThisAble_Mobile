@@ -5,12 +5,20 @@ import '../../../shared/widgets/custom_button.dart';
 import '../../../config/routes.dart';
 
 /// Landing Navbar Widget - Mobile version of includes/landing/landing_navbar.php
-/// Matches your web header styling exactly
+/// FIXED: Proper navigation and active states using YOUR ACTUAL theme structure
 class LandingNavbar extends StatelessWidget {
+  final VoidCallback? onHomePressed; // ADDED: Missing Home callback
   final VoidCallback? onAboutPressed;
   final VoidCallback? onJobsPressed;
+  final String currentPage; // ADDED: Track current page for active states
 
-  const LandingNavbar({super.key, this.onAboutPressed, this.onJobsPressed});
+  const LandingNavbar({
+    super.key,
+    this.onHomePressed, // ADDED: Now accepts Home callback
+    this.onAboutPressed,
+    this.onJobsPressed,
+    required this.currentPage, // REQUIRED: Must specify current page
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -20,7 +28,7 @@ class LandingNavbar extends StatelessWidget {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: AppColors.shadowMedium, // rgba(0, 0, 0, 0.1)
+            color: AppColors.shadowMedium, // Using YOUR actual color
             blurRadius: 10,
             offset: Offset(0, 2),
           ),
@@ -95,7 +103,7 @@ class LandingNavbar extends StatelessWidget {
           width: 50, // matches .logo img height: 50px
           height: 50,
           decoration: const BoxDecoration(
-            color: AppColors.primaryOrange,
+            color: AppColors.primaryOrange, // Using YOUR actual color
             shape: BoxShape.circle,
           ),
           child: const Icon(
@@ -110,6 +118,7 @@ class LandingNavbar extends StatelessWidget {
         Text(
           'ThisAble',
           style: AppTextStyles.navItemActive.copyWith(
+            // Using YOUR actual text style
             fontSize: 24, // matches .logo span font-size: 1.5rem
             fontWeight: FontWeight.bold,
           ),
@@ -118,28 +127,33 @@ class LandingNavbar extends StatelessWidget {
     );
   }
 
-  /// Navigation Links - matches your nav ul structure
+  /// Navigation Links - FIXED: Dynamic active states based on current page
   Widget _buildNavLinks() {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Home Link (matches nav ul li a)
+        // Home Link - FIXED: Now has proper callback and dynamic active state
         _buildNavLink(
           text: 'Home',
-          isActive: true, // Current page
-          onPressed: () {}, // Already on home
+          isActive: currentPage == 'home', // DYNAMIC: Based on current page
+          onPressed: onHomePressed, // FIXED: Now has proper callback
         ),
 
         const SizedBox(width: 20), // matches nav ul li margin-left: 20px
-        // Jobs Link
-        _buildNavLink(text: 'Jobs', isActive: false, onPressed: onJobsPressed),
+
+        // Jobs Link - FIXED: Now has dynamic active state
+        _buildNavLink(
+          text: 'Jobs',
+          isActive: currentPage == 'jobs', // DYNAMIC: Based on current page
+          onPressed: onJobsPressed,
+        ),
 
         const SizedBox(width: 20),
 
-        // About Link
+        // About Link - FIXED: Now has dynamic active state
         _buildNavLink(
           text: 'About',
-          isActive: false,
+          isActive: currentPage == 'about', // DYNAMIC: Based on current page
           onPressed: onAboutPressed,
         ),
       ],
@@ -147,130 +161,120 @@ class LandingNavbar extends StatelessWidget {
   }
 
   /// Individual Navigation Link - matches your nav ul li a styling
-  /// Individual Navigation Link - IMPROVED with better responsiveness
   Widget _buildNavLink({
     required String text,
     required bool isActive,
     VoidCallback? onPressed,
   }) {
     return InkWell(
-      // CHANGED: Use InkWell instead of GestureDetector for better feedback
       onTap: onPressed,
-      borderRadius: BorderRadius.circular(5), // Matches container border radius
-      splashColor: AppColors.primaryOrange.withOpacity(0.1), // Visual feedback
-      highlightColor: AppColors.primaryOrange.withOpacity(0.05),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
-        // EXPANDED: Bigger tap area for easier tapping
         padding: const EdgeInsets.symmetric(
-            horizontal: 15, vertical: 10), // INCREASED padding
+          horizontal: 16,
+          vertical: 8,
+        ),
         decoration: BoxDecoration(
-          color: isActive ? AppColors.accentBeige : Colors.transparent,
-          borderRadius: BorderRadius.circular(5),
+          // Active state styling (matches your CSS)
+          color: isActive
+              ? AppColors.primaryOrange.withOpacity(0.1)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isActive
+                ? AppColors.primaryOrange
+                : Colors.transparent, // Using YOUR actual colors
+            width: 1,
+          ),
         ),
         child: Text(
           text,
-          style: isActive ? AppTextStyles.navItemActive : AppTextStyles.navItem,
+          style: isActive
+              ? AppTextStyles.navItemActive.copyWith(
+                  // Using YOUR actual text styles
+                  color: AppColors.primaryOrange,
+                  fontWeight: FontWeight.w600,
+                )
+              : AppTextStyles.navItem.copyWith(
+                  // Using YOUR actual text styles
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w400,
+                ),
         ),
       ),
     );
   }
 
+  /// Sign In Button - matches your .sign-in CSS
   Widget _buildSignInButton(BuildContext context) {
-    return Material(
-      // Wrap in Material for better ink effects
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: () => AppRoutes.goToCandidateLogin(context),
-        borderRadius: BorderRadius.circular(5),
-        splashColor: Colors.white.withOpacity(0.2),
-        highlightColor: Colors.white.withOpacity(0.1),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          decoration: BoxDecoration(
-            color: AppColors.primaryOrange,
-            borderRadius: BorderRadius.circular(5),
-            boxShadow: [
-              BoxShadow(
-                color: AppColors.primaryOrange.withOpacity(0.3),
-                blurRadius: 4,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Text(
-            'Sign In',
-            style: AppTextStyles.buttonPrimary, // FIXED: Use correct style
-          ),
-        ),
-      ),
+    return SignInButton(
+      // Using YOUR actual SignInButton component
+      onPressed: () {
+        // Show sign-in options (matches your web sign-in dropdown)
+        _showSignInOptions(context);
+      },
     );
   }
-}
 
-/// Mobile App Bar Version (Alternative for very small screens)
-class LandingAppBar extends StatelessWidget implements PreferredSizeWidget {
-  final VoidCallback? onAboutPressed;
-  final VoidCallback? onJobsPressed;
-
-  const LandingAppBar({super.key, this.onAboutPressed, this.onJobsPressed});
-
-  @override
-  Widget build(BuildContext context) {
-    return AppBar(
+  /// Show Sign-In Options Modal (matches your web dropdown)
+  void _showSignInOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
       backgroundColor: Colors.white,
-      foregroundColor: AppColors.textPrimary,
-      elevation: 2,
-      shadowColor: AppColors.shadowMedium,
-
-      // Logo in title
-      title: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: const BoxDecoration(
-              color: AppColors.primaryOrange,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.accessibility_new,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Text(
-            'ThisAble',
-            style: AppTextStyles.navItemActive.copyWith(fontSize: 20),
-          ),
-        ],
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Modal Header
+            Text(
+              'Choose Your Account Type',
+              style: AppTextStyles.cardTitle.copyWith(
+                // Using YOUR actual text style
+                color: AppColors.textPrimary,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Select how you want to sign in to ThisAble',
+              style: AppTextStyles.bodyMedium.copyWith(
+                // Using YOUR actual text style
+                color: AppColors.textSecondary,
+              ),
+            ),
+            const SizedBox(height: 24),
 
-      // Actions: Navigation + Sign In
-      actions: [
-        TextButton(
-          onPressed: onJobsPressed,
-          child: Text('Jobs', style: AppTextStyles.navItem),
+            // Candidate Sign In
+            CustomButton(
+              text: 'Sign In as Job Seeker',
+              onPressed: () {
+                Navigator.pop(context);
+                AppRoutes.goToCandidateLogin(context);
+              },
+              type: CustomButtonType.primary, // Using YOUR actual button type
+              icon: const Icon(Icons.person, color: Colors.white),
+              isFullWidth: true,
+            ),
+            const SizedBox(height: 12),
+
+            // Employer Sign In
+            CustomButton(
+              text: 'Sign In as Employer',
+              onPressed: () {
+                Navigator.pop(context);
+                AppRoutes.goToEmployerLogin(context);
+              },
+              type: CustomButtonType.outlined, // Using YOUR actual button type
+              icon: Icon(Icons.business, color: AppColors.secondaryTeal),
+              isFullWidth: true,
+            ),
+            const SizedBox(height: 24),
+          ],
         ),
-        TextButton(
-          onPressed: onAboutPressed,
-          child: Text('About', style: AppTextStyles.navItem),
-        ),
-        const SizedBox(width: 10),
-        Padding(
-          padding: const EdgeInsets.only(right: 20),
-          child: CustomButton(
-            text: 'Sign In',
-            onPressed: () => AppRoutes.goToCandidateLogin(context),
-            type: CustomButtonType.primary,
-            fontSize: 14,
-          ),
-        ),
-      ],
+      ),
     );
   }
-
-  @override
-  Size get preferredSize => const Size.fromHeight(kToolbarHeight);
 }

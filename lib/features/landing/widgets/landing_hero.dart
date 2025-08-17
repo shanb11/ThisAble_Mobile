@@ -4,7 +4,7 @@ import '../../../core/theme/text_styles.dart';
 import '../../../shared/widgets/custom_button.dart';
 
 /// Landing Hero Widget - Mobile version of includes/landing/landing_hero.php
-/// Matches your web hero section styling exactly
+/// FIXED: Matches your web hero section styling exactly
 class LandingHero extends StatelessWidget {
   final TextEditingController? jobSearchController;
   final TextEditingController? locationSearchController;
@@ -111,27 +111,35 @@ class LandingHero extends StatelessWidget {
     );
   }
 
-  /// Mobile Search Bar Layout (responsive for small screens)
+  /// Mobile Search Bar Layout - FIXED: Better spacing and proportions
   Widget _buildMobileSearchBar(BuildContext context) {
     return Column(
       children: [
-        // Job Search Input
-        _buildSearchInput(),
+        // Job Search Input - FIXED: Better padding and spacing
+        Container(
+          padding:
+              const EdgeInsets.fromLTRB(20, 20, 20, 15), // Increased padding
+          child: _buildSearchInput(),
+        ),
 
         // Divider
         Container(
           height: 1,
+          margin: const EdgeInsets.symmetric(horizontal: 20),
           color: AppColors.borderLight,
         ),
 
-        // Location Input
-        _buildLocationInput(),
+        // Location Input - FIXED: Better padding and spacing
+        Container(
+          padding:
+              const EdgeInsets.fromLTRB(20, 15, 20, 20), // Increased padding
+          child: _buildLocationInput(),
+        ),
 
-        const SizedBox(height: 15),
-
-        // Full-width Search Button
+        // Search Button - FIXED: Better spacing and full width
         Padding(
-          padding: const EdgeInsets.all(15),
+          padding:
+              const EdgeInsets.fromLTRB(20, 0, 20, 20), // Better bottom padding
           child: SizedBox(
             width: double.infinity,
             child: _buildSearchButton(context),
@@ -141,89 +149,100 @@ class LandingHero extends StatelessWidget {
     );
   }
 
-  /// Job Search Input - matches your web .search-input structure
+  /// Job Search Input - FIXED: Borderless styling to match web
   Widget _buildSearchInput() {
-    return Container(
-      padding:
-          const EdgeInsets.symmetric(horizontal: 15), // matches padding: 0 15px
-      child: Row(
-        children: [
-          // Search Icon (matches .search-input i)
-          const Icon(
-            Icons.search,
-            color: AppColors.textLight, // matches color: #888
-            size: 20,
-          ),
+    return Row(
+      children: [
+        // Search Icon (matches .search-input i)
+        const Icon(
+          Icons.search,
+          color: AppColors.textLight, // matches color: #888
+          size: 20,
+        ),
 
-          const SizedBox(width: 10), // matches margin-right: 10px
+        const SizedBox(width: 10), // matches margin-right: 10px
 
-          // Search Input Field (matches .search-input input)
-          Expanded(
-            child: TextField(
-              controller: jobSearchController,
-              style: AppTextStyles.formInput,
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                hintText: 'Job title or keyword', // matches placeholder
-                hintStyle: AppTextStyles.formPlaceholder,
-                contentPadding: const EdgeInsets.symmetric(
-                    vertical: 15), // matches padding: 15px 0
+        // Search Input Field - FIXED: Borderless and better padding
+        Expanded(
+          child: TextField(
+            controller: jobSearchController,
+            style: AppTextStyles.formInput,
+            decoration: InputDecoration(
+              border: InputBorder.none, // FIXED: Completely borderless
+              enabledBorder: InputBorder.none, // FIXED: No enabled border
+              focusedBorder: InputBorder.none, // FIXED: No focus border
+              disabledBorder: InputBorder.none, // FIXED: No disabled border
+              errorBorder: InputBorder.none, // FIXED: No error border
+              focusedErrorBorder:
+                  InputBorder.none, // FIXED: No error focus border
+              hintText: 'Job title or keyword', // matches placeholder
+              hintStyle: AppTextStyles.formPlaceholder,
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 18, // FIXED: Increased padding to match web
               ),
+              filled: false, // FIXED: No background fill
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  /// Location Input - matches your web .location-input structure
+  /// Location Input - FIXED: Borderless styling to match web
   Widget _buildLocationInput() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 15),
-      child: Row(
-        children: [
-          // Location Icon (matches .location-input i)
-          const Icon(
-            Icons.location_on_outlined,
-            color: AppColors.textLight,
-            size: 20,
-          ),
+    return Row(
+      children: [
+        // Location Icon (matches .location-input i)
+        const Icon(
+          Icons.location_on_outlined,
+          color: AppColors.textLight,
+          size: 20,
+        ),
 
-          const SizedBox(width: 10),
+        const SizedBox(width: 10),
 
-          // Location Input Field (matches .location-input input)
-          Expanded(
-            child: TextField(
-              controller: locationSearchController,
-              style: AppTextStyles.formInput,
-              decoration: InputDecoration(
-                border: InputBorder.none,
-                hintText: 'All Locations', // matches placeholder
-                hintStyle: AppTextStyles.formPlaceholder,
-                contentPadding: const EdgeInsets.symmetric(vertical: 15),
+        // Location Input Field - FIXED: Borderless and better padding
+        Expanded(
+          child: TextField(
+            controller: locationSearchController,
+            style: AppTextStyles.formInput,
+            decoration: InputDecoration(
+              border: InputBorder.none, // FIXED: Completely borderless
+              enabledBorder: InputBorder.none, // FIXED: No enabled border
+              focusedBorder: InputBorder.none, // FIXED: No focus border
+              disabledBorder: InputBorder.none, // FIXED: No disabled border
+              errorBorder: InputBorder.none, // FIXED: No error border
+              focusedErrorBorder:
+                  InputBorder.none, // FIXED: No error focus border
+              hintText: 'All Locations', // matches placeholder
+              hintStyle: AppTextStyles.formPlaceholder,
+              contentPadding: const EdgeInsets.symmetric(
+                vertical: 18, // FIXED: Increased padding to match web
               ),
+              filled: false, // FIXED: No background fill
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  /// Search Button - matches your web .search-bar button styling
+  /// Search Button - FIXED: Use orange color (primary) instead of teal (secondary)
   Widget _buildSearchButton(BuildContext context) {
     return CustomButton(
       text: 'Search',
       onPressed: onSearchPressed,
-      type: CustomButtonType.secondary, // matches .btn-secondary
+      type: CustomButtonType
+          .primary, // FIXED: Changed from secondary to primary (orange)
       padding: const EdgeInsets.symmetric(
         horizontal: 25, // matches padding: 15px 25px
-        vertical: 15,
+        vertical: 18, // FIXED: Increased to match text field height
       ),
     );
   }
 }
 
-/// Alternative Compact Hero (for very small screens)
+/// Alternative Compact Hero (for very small screens) - FIXED: Also use orange button
 class CompactLandingHero extends StatelessWidget {
   final TextEditingController? jobSearchController;
   final VoidCallback? onSearchPressed;
@@ -260,11 +279,18 @@ class CompactLandingHero extends StatelessWidget {
 
           const SizedBox(height: 20),
 
-          // Simple Search
+          // Simple Search - FIXED: Borderless and orange button
           Container(
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(5),
+              boxShadow: const [
+                BoxShadow(
+                  color: AppColors.shadowMedium,
+                  blurRadius: 15,
+                  offset: Offset(0, 5),
+                ),
+              ],
             ),
             child: Row(
               children: [
@@ -273,16 +299,29 @@ class CompactLandingHero extends StatelessWidget {
                     controller: jobSearchController,
                     decoration: const InputDecoration(
                       hintText: 'Search jobs...',
-                      border: InputBorder.none,
+                      border: InputBorder.none, // FIXED: Borderless
+                      enabledBorder: InputBorder.none,
+                      focusedBorder: InputBorder.none,
                       contentPadding: EdgeInsets.all(15),
-                      prefixIcon: Icon(Icons.search),
+                      prefixIcon: Icon(
+                        Icons.search,
+                        color: AppColors.textLight,
+                      ),
+                      filled: false, // FIXED: No background fill
                     ),
                   ),
                 ),
-                CustomButton(
-                  text: 'Go',
-                  onPressed: onSearchPressed,
-                  type: CustomButtonType.secondary,
+                Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: CustomButton(
+                    text: 'Go',
+                    onPressed: onSearchPressed,
+                    type: CustomButtonType.primary, // FIXED: Orange button
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 12,
+                    ),
+                  ),
                 ),
               ],
             ),

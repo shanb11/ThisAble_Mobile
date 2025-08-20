@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart'; // Add this line
 import '../../config/api_endpoints.dart';
+import '../../config/dynamic_api_config.dart';
 
 class ApiService {
   static const String _tokenKey = 'api_token';
@@ -940,16 +941,17 @@ class ApiService {
     }
   }
 
-  /// Get job categories with real counts (calls your categories.php)
   static Future<Map<String, dynamic>> getJobCategories() async {
     try {
-      // FIX: Use config instead of hardcoded IP!
-      final uri = Uri.parse(AppConstants.landingJobCategories);
+      // Use dynamic API config instead of hardcoded IP
+      final endpoint =
+          await DynamicApiConfig.buildEndpoint('jobs/categories.php');
 
-      print('🔧 Fetching categories from: $uri');
+      print('🔧 Loading job categories from API...');
+      print('🔧 Fetching categories from: $endpoint');
 
       final response = await http.get(
-        uri,
+        Uri.parse(endpoint),
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -974,6 +976,38 @@ class ApiService {
       }
     } catch (e) {
       print('🔧 Error fetching categories: $e');
+
+      // If network error, try to refresh IP configuration
+      if (e.toString().toLowerCase().contains('no route to host') ||
+          e.toString().toLowerCase().contains('connection refused')) {
+        print('🔄 Network error detected, trying to refresh IP...');
+        final refreshed = await DynamicApiConfig.refresh();
+
+        if (refreshed) {
+          print('✅ IP refreshed, retrying categories request...');
+          // Retry once with new IP
+          try {
+            final endpoint =
+                await DynamicApiConfig.buildEndpoint('jobs/categories.php');
+
+            final response = await http.get(
+              Uri.parse(endpoint),
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+            );
+
+            if (response.statusCode == 200) {
+              final data = json.decode(response.body);
+              return data;
+            }
+          } catch (retryError) {
+            print('❌ Retry failed: $retryError');
+          }
+        }
+      }
+
       return {
         'success': false,
         'message': 'Connection error: $e',
@@ -982,6 +1016,55 @@ class ApiService {
           'stats': {'total_jobs': 0, 'recent_jobs': 0}
         }
       };
+    }
+  }
+
+// Also add this initialization method at the top of your ApiService class:
+
+  /// Initialize API service with auto-discovery (ADD THIS METHOD)
+  static Future<bool> initialize() async {
+    try {
+      print('🚀 Initializing API Service with auto-discovery...');
+      final success = await DynamicApiConfig.initialize();
+
+      if (success) {
+        print('✅ API Service ready!');
+        print('✅ Using IP: ${DynamicApiConfig.currentIP}');
+        return true;
+      } else {
+        print('❌ API Service initialization failed');
+        return false;
+      }
+    } catch (e) {
+      print('❌ API Service initialization error: $e');
+      return false;
+    }
+  }
+
+// Add these helper methods for network management:
+
+  /// Refresh IP configuration (call when changing locations)
+  static Future<bool> refreshNetworkConfig() async {
+    return await DynamicApiConfig.refresh();
+  }
+
+  /// Set manual IP (for debugging)
+  static Future<bool> setManualIP(String ip) async {
+    return await DynamicApiConfig.setManualIP(ip);
+  }
+
+  /// Get current network status
+  static Future<Map<String, dynamic>> getNetworkStatus() async {
+    return await DynamicApiConfig.getNetworkStatus();
+  }
+
+  /// Check if API is available
+  static Future<bool> isApiAvailable() async {
+    try {
+      final result = await testConnection();
+      return result['success'] == true;
+    } catch (e) {
+      return false;
     }
   }
 }

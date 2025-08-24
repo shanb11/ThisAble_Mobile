@@ -4,15 +4,15 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart'; // For kIsWeb
 
-/// Enhanced Network Discovery Service for ThisAble Mobile
-/// NOW SUPPORTS: Physical devices, Android emulator, iOS simulator, Web browser
-/// Automatically finds your computer's IP address across different platforms and locations
+/// FIXED Network Discovery Service for ThisAble Mobile
+/// PRIORITY: Physical device discovery (your original working method)
+/// SECONDARY: Emulator/web fallbacks
 class NetworkDiscoveryService {
   static const String _cachedIPKey = 'cached_computer_ip';
   static const String _projectPath = 'ThisAble';
   static const int _timeoutSeconds = 3;
 
-  /// Main discovery method - platform-intelligent
+  /// Main discovery method - PHYSICAL DEVICE PRIORITY
   static Future<String?> findWorkingIP() async {
     print('🔍 Auto-discovering computer IP address...');
     print('🔍 Platform: ${_getPlatformName()}');
@@ -28,17 +28,17 @@ class NetworkDiscoveryService {
       print('❌ Cached IP no longer works, running discovery...');
     }
 
-    // Step 2: Platform-specific discovery
+    // Step 2: Platform-specific discovery with CORRECT priorities
     String? discoveredIP;
 
     if (kIsWeb) {
       // Web browser discovery
       discoveredIP = await _discoverWebHostIP();
     } else if (Platform.isAndroid) {
-      // Android discovery (physical device or emulator)
+      // Android discovery - FIXED LOGIC
       discoveredIP = await _discoverAndroidHostIP();
     } else if (Platform.isIOS) {
-      // iOS discovery (physical device or simulator)
+      // iOS discovery - FIXED LOGIC
       discoveredIP = await _discoverIOSHostIP();
     } else {
       // Unknown platform - try common methods
@@ -55,47 +55,49 @@ class NetworkDiscoveryService {
     return null;
   }
 
-  /// Android-specific discovery (physical device + emulator)
+  /// FIXED Android discovery - Physical device FIRST, emulator ONLY if physical fails AND actually emulator
   static Future<String?> _discoverAndroidHostIP() async {
     print('🤖 Android platform detected');
 
-    try {
-      // Try physical device discovery first (your current method)
-      final physicalDeviceIP = await _discoverPhysicalDeviceIP();
-      if (physicalDeviceIP != null) {
-        print('📱 Physical device IP discovery successful');
-        return physicalDeviceIP;
-      }
-    } catch (e) {
-      print('📱 Physical device discovery failed: $e');
+    // FIRST: Always try physical device discovery (your original working method)
+    print('📱 Attempting physical device discovery...');
+    final physicalDeviceIP = await _discoverPhysicalDeviceIP();
+    if (physicalDeviceIP != null) {
+      print('✅ Physical device discovery successful: $physicalDeviceIP');
+      return physicalDeviceIP;
     }
 
-    // If physical device fails, try emulator discovery
-    print('🤖 Attempting Android emulator host discovery...');
-    return await _discoverAndroidEmulatorHostIP();
+    print('📱 Physical device discovery failed');
+
+    // SECOND: Only try emulator discovery if this might actually be an emulator
+    if (await _isLikelyAndroidEmulator()) {
+      print(
+          '🤖 Detected likely Android emulator, trying emulator discovery...');
+      return await _discoverAndroidEmulatorHostIP();
+    } else {
+      print(
+          '📱 This appears to be a physical device, not attempting emulator methods');
+      return null;
+    }
   }
 
-  /// iOS-specific discovery (physical device + simulator)
+  /// FIXED iOS discovery - Physical device FIRST, simulator ONLY if physical fails
   static Future<String?> _discoverIOSHostIP() async {
     print('📱 iOS platform detected');
 
-    try {
-      // Try physical device discovery first
-      final physicalDeviceIP = await _discoverPhysicalDeviceIP();
-      if (physicalDeviceIP != null) {
-        print('📱 Physical device IP discovery successful');
-        return physicalDeviceIP;
-      }
-    } catch (e) {
-      print('📱 Physical device discovery failed: $e');
+    // FIRST: Always try physical device discovery
+    print('📱 Attempting physical device discovery...');
+    final physicalDeviceIP = await _discoverPhysicalDeviceIP();
+    if (physicalDeviceIP != null) {
+      print('✅ Physical device discovery successful: $physicalDeviceIP');
+      return physicalDeviceIP;
     }
 
-    // If physical device fails, try simulator discovery
-    print('📱 Attempting iOS simulator host discovery...');
+    print('📱 Physical device discovery failed, trying simulator methods...');
     return await _discoverIOSSimulatorHostIP();
   }
 
-  /// Web browser discovery
+  /// Web browser discovery (unchanged)
   static Future<String?> _discoverWebHostIP() async {
     print('🌐 Web browser detected');
 
@@ -120,18 +122,29 @@ class NetworkDiscoveryService {
       return 'localhost';
     }
 
+    // Try physical device discovery
+    final physicalIP = await _discoverPhysicalDeviceIP();
+    if (physicalIP != null) {
+      return physicalIP;
+    }
+
     // Try common IPs
     return await _discoverCommonHostIPs();
   }
 
-  /// Physical device IP discovery (your original method)
+  /// RESTORED - Your original physical device IP discovery method (WORKING VERSION)
   static Future<String?> _discoverPhysicalDeviceIP() async {
     try {
-      print('📱 Attempting physical device network interface discovery...');
+      print(
+          '📱 Using NetworkInterface.list() for physical device discovery...');
       final interfaces = await NetworkInterface.list();
 
+      print('📱 Found ${interfaces.length} network interfaces');
+
+      // Step 1: Look for WiFi interfaces first (your original logic)
       for (var interface in interfaces) {
-        // Look for WiFi interface
+        print('📱 Checking interface: ${interface.name}');
+
         if (interface.name.toLowerCase().contains('wlan') ||
             interface.name.toLowerCase().contains('wifi') ||
             interface.name.toLowerCase().contains('en0')) {
@@ -139,30 +152,39 @@ class NetworkDiscoveryService {
             if (addr.type == InternetAddressType.IPv4 &&
                 !addr.isLoopback &&
                 addr.address.startsWith(RegExp(r'192\.168\.|10\.|172\.'))) {
-              // Test this IP to make sure it works
-              if (await _testIP(addr.address)) {
-                print('✅ Physical device IP found: ${addr.address}');
-                return addr.address;
+              print('📱 Found device IP: ${addr.address}');
+
+              // Now find your computer's IP on the same network
+              final computerIP =
+                  await _findComputerIPFromDeviceIP(addr.address);
+              if (computerIP != null) {
+                print('✅ Physical device found computer IP: $computerIP');
+                return computerIP;
               }
             }
           }
         }
       }
 
-      // Fallback: any non-loopback IPv4
+      // Step 2: Fallback to any non-loopback IPv4 (your original logic)
       for (var interface in interfaces) {
         for (var addr in interface.addresses) {
           if (addr.type == InternetAddressType.IPv4 &&
               !addr.isLoopback &&
               addr.address.startsWith(RegExp(r'192\.168\.|10\.|172\.'))) {
-            if (await _testIP(addr.address)) {
-              print('✅ Physical device IP found (fallback): ${addr.address}');
-              return addr.address;
+            print('📱 Found device IP (fallback): ${addr.address}');
+
+            final computerIP = await _findComputerIPFromDeviceIP(addr.address);
+            if (computerIP != null) {
+              print(
+                  '✅ Physical device found computer IP (fallback): $computerIP');
+              return computerIP;
             }
           }
         }
       }
 
+      print('❌ Physical device: No valid network interfaces found');
       return null;
     } catch (e) {
       print('❌ Physical device discovery error: $e');
@@ -170,14 +192,61 @@ class NetworkDiscoveryService {
     }
   }
 
-  /// Android emulator host IP discovery
+  /// NEW: Find computer IP from device IP (scan same network)
+  static Future<String?> _findComputerIPFromDeviceIP(String deviceIP) async {
+    print('📱 Device is on IP: $deviceIP');
+
+    // Get network base (e.g., 192.168.1.100 -> 192.168.1)
+    final networkBase = _getNetworkBase(deviceIP);
+    if (networkBase == null) {
+      print('❌ Could not determine network base from $deviceIP');
+      return null;
+    }
+
+    print('📱 Scanning network $networkBase.x for XAMPP server...');
+
+    // Scan the network for XAMPP server
+    return await _scanNetworkRange(networkBase);
+  }
+
+  /// Check if this is likely an Android emulator
+  static Future<bool> _isLikelyAndroidEmulator() async {
+    try {
+      // Simple emulator detection methods
+
+      // Method 1: Check environment variables
+      if (Platform.environment.containsKey('ANDROID_EMU_CONSOLE_AUTH_TOKEN') ||
+          Platform.environment.containsKey('ANDROID_AVD_NAME')) {
+        return true;
+      }
+
+      // Method 2: Check device IP patterns
+      try {
+        final interfaces = await NetworkInterface.list();
+        for (var interface in interfaces) {
+          for (var addr in interface.addresses) {
+            // Android emulator typically gets IPs in 10.0.2.x range
+            if (addr.address.startsWith('10.0.2.')) {
+              return true;
+            }
+          }
+        }
+      } catch (e) {
+        // If we can't check interfaces, assume physical device
+      }
+
+      return false;
+    } catch (e) {
+      // If detection fails, assume physical device (safer)
+      return false;
+    }
+  }
+
+  /// Android emulator host IP discovery (only called if confirmed emulator)
   static Future<String?> _discoverAndroidEmulatorHostIP() async {
     print('🤖 Scanning for Android emulator host IP...');
 
-    // Android emulator specific: 10.0.2.2 is the host machine
-    // But we need to find the actual IP on the host's network
-
-    // Strategy 1: Test common IP patterns based on typical networks
+    // Android emulator specific: scan common host network ranges
     final commonRanges = [
       '192.168.1', // Most common home WiFi
       '192.168.0', // Alternative home WiFi
@@ -237,9 +306,18 @@ class NetworkDiscoveryService {
     return null;
   }
 
-  /// Scan a network range for working XAMPP server (your existing logic enhanced)
+  /// Extract network base from IP (e.g., 192.168.1.100 -> 192.168.1)
+  static String? _getNetworkBase(String ip) {
+    final parts = ip.split('.');
+    if (parts.length >= 3) {
+      return '${parts[0]}.${parts[1]}.${parts[2]}';
+    }
+    return null;
+  }
+
+  /// Scan a network range for working XAMPP server (enhanced version)
   static Future<String?> _scanNetworkRange(String networkBase) async {
-    // Enhanced version of your existing method with better IP priority
+    // Enhanced version with better IP priority
     final prioritizedIPs = [
       // High priority IPs (your current/recent IPs from files)
       157, 3, 18, // From your existing config
@@ -278,7 +356,7 @@ class NetworkDiscoveryService {
     return null;
   }
 
-  /// Test if a specific IP address works (your existing method enhanced)
+  /// Test if a specific IP address works (your existing method)
   static Future<bool> _testIP(String ip) async {
     try {
       final response = await http.get(
@@ -349,7 +427,7 @@ class NetworkDiscoveryService {
     }
   }
 
-  /// Manual IP override (your existing method enhanced)
+  /// Manual IP override (your existing method)
   static Future<void> setManualIP(String ip) async {
     if (await _testIP(ip)) {
       await _cacheIP(ip);
@@ -383,6 +461,9 @@ class NetworkDiscoveryService {
       'cache_timestamp': await _getCacheTimestamp(),
       'is_web': kIsWeb,
       'supports_network_interface': await _supportsNetworkInterface(),
+      'likely_emulator': !kIsWeb && Platform.isAndroid
+          ? await _isLikelyAndroidEmulator()
+          : false,
     };
   }
 

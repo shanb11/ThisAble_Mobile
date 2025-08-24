@@ -6,6 +6,12 @@ import '../../config/api_endpoints.dart';
 import '../../config/dynamic_api_config.dart';
 
 class ApiService {
+  /// Add these methods anywhere in your ApiService class:
+
+  static Future<Map<String, dynamic>> getNetworkStatus() async {
+    return await DynamicApiConfig.getStatus();
+  }
+
   static const String _tokenKey = 'api_token';
   static const String _userKey = 'current_user';
 
@@ -885,10 +891,9 @@ class ApiService {
       if (jobType != null && jobType.isNotEmpty)
         queryParams['job_type'] = jobType;
 
-      // Build URI - calls your shared/jobs.php
-      final uri = Uri.parse('http://192.168.1.3/ThisAble/api/shared/jobs.php')
-          .replace(
-              queryParameters: queryParams.isNotEmpty ? queryParams : null);
+      final endpoint = await DynamicApiConfig.buildEndpoint('shared/jobs.php');
+      final uri = Uri.parse(endpoint).replace(
+          queryParameters: queryParams.isNotEmpty ? queryParams : null);
 
       print('🔧 Fetching jobs from: $uri');
 
@@ -1054,8 +1059,8 @@ class ApiService {
   }
 
   /// Get current network status
-  static Future<Map<String, dynamic>> getNetworkStatus() async {
-    return await DynamicApiConfig.getNetworkStatus();
+  static Future<Map<String, dynamic>> getStatus() async {
+    return await DynamicApiConfig.getStatus();
   }
 
   /// Check if API is available

@@ -1,7 +1,11 @@
 import '../core/services/network_discovery_service.dart';
+import 'package:flutter/foundation.dart';
+import 'dart:io';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
-/// Dynamic API Configuration for ThisAble Mobile
-/// Automatically finds and uses the correct computer IP address
+/// Enhanced Dynamic API Configuration for ThisAble Mobile
+/// Now supports ALL platforms with intelligent fallbacks
 class DynamicApiConfig {
   static String? _currentBaseUrl;
   static String? _currentIP;
@@ -11,16 +15,17 @@ class DynamicApiConfig {
   static const String _projectPath = 'ThisAble';
   static const String _apiPath = 'api';
 
-  /// Initialize the API configuration
+  /// Enhanced initialization with multi-platform support
   static Future<bool> initialize() async {
     if (_isInitialized && _currentBaseUrl != null) {
+      print('✅ API Config already initialized: $_currentBaseUrl');
       return true; // Already working
     }
 
-    print('🚀 Initializing Dynamic API Config...');
+    print('🚀 Initializing Enhanced Dynamic API Config...');
 
     try {
-      // Auto-discover working IP
+      // Use enhanced network discovery
       final workingIP = await NetworkDiscoveryService.findWorkingIP();
 
       if (workingIP != null) {
@@ -28,28 +33,102 @@ class DynamicApiConfig {
         _currentBaseUrl = 'http://$workingIP/$_projectPath/$_apiPath';
         _isInitialized = true;
 
-        print('✅ API Config initialized with IP: $workingIP');
+        print('✅ API Config initialized successfully!');
+        print('✅ Platform: ${await _getPlatformName()}');
+        print('✅ IP: $workingIP');
         print('✅ Base URL: $_currentBaseUrl');
         return true;
       } else {
-        print('❌ Failed to find working IP');
-        _isInitialized = false;
-        return false;
+        print('❌ Network discovery failed - no working IP found');
+
+        // Enhanced fallback handling
+        return await _handleDiscoveryFailure();
       }
     } catch (e) {
-      print('❌ Error initializing API config: $e');
-      _isInitialized = false;
-      return false;
+      print('❌ Error during API config initialization: $e');
+      return await _handleDiscoveryFailure();
     }
   }
 
-  /// Get current base URL (auto-initializes if needed)
+  /// Handle discovery failure with intelligent fallbacks
+  static Future<bool> _handleDiscoveryFailure() async {
+    print('🔧 Attempting fallback configuration...');
+
+    // Try platform-specific fallbacks
+    String? fallbackIP;
+
+    if (kIsWeb) {
+      // Web browser fallback
+      fallbackIP = 'localhost';
+      print('🌐 Web platform fallback: $fallbackIP');
+    } else {
+      try {
+        // Try to detect platform for better fallback
+        if (Platform.isAndroid) {
+          // Android emulator fallback
+          fallbackIP = '10.0.2.2';
+          print('🤖 Android emulator fallback: $fallbackIP');
+        } else if (Platform.isIOS) {
+          // iOS simulator fallback
+          fallbackIP = 'localhost';
+          print('📱 iOS simulator fallback: $fallbackIP');
+        }
+      } catch (e) {
+        print('❓ Platform detection failed: $e');
+      }
+    }
+
+    // Test fallback IP if we have one
+    if (fallbackIP != null) {
+      print('🔧 Testing fallback IP: $fallbackIP');
+
+      try {
+        final response = await http.get(
+          Uri.parse('http://$fallbackIP/$_projectPath/$_apiPath/test.php'),
+          headers: {'Content-Type': 'application/json'},
+        ).timeout(Duration(seconds: 5));
+
+        if (response.statusCode == 200) {
+          final data = json.decode(response.body);
+          if (data['success'] == true) {
+            _currentIP = fallbackIP;
+            _currentBaseUrl = 'http://$fallbackIP/$_projectPath/$_apiPath';
+            _isInitialized = true;
+
+            print('✅ Fallback configuration successful!');
+            print('✅ Using fallback IP: $fallbackIP');
+
+            // Cache this working IP
+            try {
+              await NetworkDiscoveryService.setManualIP(fallbackIP);
+            } catch (e) {
+              print('⚠️ Could not cache fallback IP: $e');
+            }
+
+            return true;
+          }
+        }
+      } catch (e) {
+        print('❌ Fallback test failed: $e');
+      }
+    }
+
+    // Ultimate fallback - set a default but mark as failed
+    print('❌ All discovery and fallback methods failed');
+    _isInitialized = false;
+    return false;
+  }
+
+  /// Get current base URL with enhanced error handling
   static Future<String> getBaseUrl() async {
     if (!_isInitialized || _currentBaseUrl == null) {
       final success = await initialize();
       if (!success) {
-        throw Exception(
-            'Unable to determine API URL. Please check your network connection and XAMPP server.');
+        throw Exception('Unable to determine API URL. Please check:\n'
+            '1. XAMPP is running (Apache started)\n'
+            '2. ThisAble project is at C:\\xampp\\htdocs\\ThisAble\n'
+            '3. Your computer and device are on the same network\n'
+            '4. Windows Firewall is not blocking connections');
       }
     }
 
@@ -69,12 +148,17 @@ class DynamicApiConfig {
     }
   }
 
-  /// Force refresh (useful when changing locations)
+  /// Enhanced refresh with better error handling
   static Future<bool> refresh() async {
-    print('🔄 Refreshing API configuration...');
+    print('🔄 Force refreshing network configuration...');
 
     // Clear cache and re-initialize
-    await NetworkDiscoveryService.clearCache();
+    try {
+      await NetworkDiscoveryService.clearCache();
+    } catch (e) {
+      print('⚠️ Could not clear cache: $e');
+    }
+
     _isInitialized = false;
     _currentBaseUrl = null;
     _currentIP = null;
@@ -82,16 +166,33 @@ class DynamicApiConfig {
     return await initialize();
   }
 
-  /// Set manual IP (for debugging)
+  /// Set manual IP with validation
   static Future<bool> setManualIP(String ip) async {
     try {
-      await NetworkDiscoveryService.setManualIP(ip);
-      _currentIP = ip;
-      _currentBaseUrl = 'http://$ip/$_projectPath/$_apiPath';
-      _isInitialized = true;
+      print('🔧 Setting manual IP: $ip');
 
-      print('✅ Manual IP set: $ip');
-      return true;
+      // Validate IP works before setting
+      final response = await http.get(
+        Uri.parse('http://$ip/$_projectPath/$_apiPath/test.php'),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        if (data['success'] == true) {
+          _currentIP = ip;
+          _currentBaseUrl = 'http://$ip/$_projectPath/$_apiPath';
+          _isInitialized = true;
+
+          // Cache this IP
+          await NetworkDiscoveryService.setManualIP(ip);
+
+          print('✅ Manual IP set and validated: $ip');
+          return true;
+        }
+      }
+
+      throw Exception('Manual IP validation failed');
     } catch (e) {
       print('❌ Failed to set manual IP: $e');
       return false;
@@ -104,7 +205,35 @@ class DynamicApiConfig {
     return '$baseUrl/$endpoint';
   }
 
-  /// Get all endpoints
+  /// Get comprehensive status for debugging
+  static Future<Map<String, dynamic>> getStatus() async {
+    final discoveryStatus = await NetworkDiscoveryService.getDiscoveryStatus();
+
+    return {
+      'initialized': _isInitialized,
+      'current_ip': _currentIP,
+      'base_url': _currentBaseUrl,
+      'platform_info': discoveryStatus,
+      'can_connect': await isApiAvailable(),
+    };
+  }
+
+  /// Get platform name for debugging
+  static Future<String> _getPlatformName() async {
+    if (kIsWeb) return 'Web Browser';
+    try {
+      if (Platform.isAndroid) return 'Android';
+      if (Platform.isIOS) return 'iOS';
+      if (Platform.isWindows) return 'Windows';
+      if (Platform.isMacOS) return 'macOS';
+      if (Platform.isLinux) return 'Linux';
+    } catch (e) {
+      // Platform detection might fail
+    }
+    return 'Unknown Platform';
+  }
+
+  /// Get all endpoints with current base URL
   static Future<Map<String, String>> getEndpoints() async {
     final baseUrl = await getBaseUrl();
 
@@ -119,36 +248,57 @@ class DynamicApiConfig {
       'google_auth': '$baseUrl/auth/google.php',
       'verify_pwd': '$baseUrl/auth/verify_pwd.php',
 
-      // Jobs & Landing (the failing one!)
+      // Jobs & Categories (your current endpoints)
       'job_categories': '$baseUrl/jobs/categories.php',
       'job_listings': '$baseUrl/shared/jobs.php',
       'job_search': '$baseUrl/shared/jobs.php',
-      'contact_form': '$baseUrl/shared/contact.php',
 
       // Candidate
-      'candidate_dashboard': '$baseUrl/candidate/get_dashboard_home.php',
-      'candidate_user_data': '$baseUrl/candidate/get_user_data.php',
-      'candidate_save_setup': '$baseUrl/candidate/save_setup_data.php',
-      'candidate_save_skills': '$baseUrl/candidate/save_skills.php',
-      'candidate_get_skills': '$baseUrl/candidate/get_skills.php',
-      'candidate_applications': '$baseUrl/candidate/get_applications_list.php',
-      'candidate_jobs_list': '$baseUrl/candidate/get_jobs_list.php',
+      'get_user_data': '$baseUrl/candidate/get_user_data.php',
+      'save_setup_data': '$baseUrl/candidate/save_setup_data.php',
+      'upload_resume': '$baseUrl/candidate/upload_resume_process.php',
 
-      // Shared data
-      'disability_types': '$baseUrl/shared/get_disability_types.php',
-      'skills': '$baseUrl/shared/get_skills.php',
-      'skill_categories': '$baseUrl/shared/get_skill_categories.php',
+      // Shared
+      'get_skills': '$baseUrl/shared/get_skills.php',
+      'get_disability_types': '$baseUrl/shared/get_disability_types.php',
     };
   }
 
-  /// Get network status for debugging
-  static Future<Map<String, dynamic>> getNetworkStatus() async {
-    return {
-      'current_base_url': _currentBaseUrl,
-      'current_ip': _currentIP,
-      'is_initialized': _isInitialized,
-      'project_path': _projectPath,
-      'api_path': _apiPath,
-    };
+  /// Test connection to API
+  static Future<Map<String, dynamic>> testConnection() async {
+    try {
+      final baseUrl = await getBaseUrl();
+      final testUrl = '$baseUrl/test.php';
+
+      print('🔧 Testing connection to: $testUrl');
+
+      final response = await http.get(
+        Uri.parse(testUrl),
+        headers: {'Content-Type': 'application/json'},
+      ).timeout(Duration(seconds: 10));
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        return {
+          'success': true,
+          'status_code': response.statusCode,
+          'response': data,
+          'url': testUrl,
+        };
+      } else {
+        return {
+          'success': false,
+          'status_code': response.statusCode,
+          'error': 'HTTP ${response.statusCode}',
+          'url': testUrl,
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'error': e.toString(),
+        'url': 'Connection failed',
+      };
+    }
   }
 }

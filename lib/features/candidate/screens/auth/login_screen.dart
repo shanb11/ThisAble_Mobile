@@ -10,6 +10,10 @@ import '../../modals/forgot_password_modal.dart';
 import '../../modals/selection_modal.dart';
 import '../../../../core/services/api_service.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import '../../../../core/utils/platform_utils.dart';
+import '../../../../core/services/google_signin_web_service.dart';
+import '../../../../core/services/google_signin_mobile_service.dart';
+import '../../../../core/services/google_signin_controller.dart';
 
 /// Login Screen - Mobile version of frontend/candidate/login.php
 /// Exact replica of your web login page with split-screen design
@@ -38,6 +42,17 @@ class _LoginScreenState extends State<LoginScreen> {
     _passwordController.dispose();
     super.dispose();
   }
+
+/*
+  @override
+  void initState() {
+    super.initState();
+
+    // Test the web Google Sign-In service
+    _testWebGoogleSignIn();
+    _testMobileGoogleSignIn();
+  }
+  */
 
   @override
   Widget build(BuildContext context) {
@@ -495,101 +510,116 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        clientId:
-            '83628564105-ebo9ng5modqfhkgepbm55rkv92d669l9.apps.googleusercontent.com',
-        scopes: ['email', 'profile'],
-      );
+      // Use the new platform-aware controller
+      final controller = GoogleSignInController.instance;
 
-      final GoogleSignInAccount? googleUser = await googleSignIn.signIn();
+      // Initialize controller if needed (safe, non-blocking)
+      await controller.initialize();
 
-      if (googleUser == null) {
-        setState(() {
-          _isLoading = false;
-        });
-        return;
-      }
-
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-
-      if (googleAuth.idToken == null) {
-        throw Exception('Failed to get Google ID token');
-      }
-
-      final result = await ApiService.googleSignIn(
-        idToken: googleAuth.idToken!,
-        accessToken: googleAuth.accessToken,
-      );
+      // Attempt sign-in using platform-appropriate method
+      final result = await controller.signIn();
 
       setState(() {
         _isLoading = false;
       });
 
-      if (result['success']) {
-        final data = result['data'];
+      if (result.success &&
+          result.account != null &&
+          result.authentication != null) {
+        // Success! Now call your existing API integration
+        final apiResult = await ApiService.googleSignIn(
+          idToken: result.authentication!.idToken!,
+          accessToken: result.authentication!.accessToken,
+        );
 
-        // DEBUG: Print the entire response
-        print('=== GOOGLE SIGNIN SUCCESS ===');
-        print('Full response: $data');
+        if (apiResult['success']) {
+          final data = apiResult['data'];
 
-        // CHECK IF TOKEN IS BEING SAVED
-        final token = data['token'];
-        print('Token from API: $token');
+          // DEBUG: Print the entire response (keep your existing debug code)
+          print('=== PLATFORM-AWARE GOOGLE SIGNIN SUCCESS ===');
+          print('Platform used: ${result.platformUsed}');
+          print('Full response: $data');
 
-        // VERIFY TOKEN WAS SAVED
-        await Future.delayed(Duration(milliseconds: 100)); // Wait a bit
-        final savedToken = await ApiService.getToken();
-        print('Token saved in storage: $savedToken');
-        print('Token match: ${token == savedToken}');
+          // CHECK IF TOKEN IS BEING SAVED (keep your existing debug code)
+          final token = data['token'];
+          print('Token from API: $token');
 
-        if (data['requires_profile_completion'] == true) {
-          // New Google user - needs profile completion
-          final googleUserInfo = data['google_user_info'];
+          // VERIFY TOKEN WAS SAVED (keep your existing debug code)
+          await Future.delayed(Duration(milliseconds: 100));
+          final savedToken = await ApiService.getToken();
+          print('Token saved in storage: $savedToken');
+          print('Token match: ${token == savedToken}');
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                  'Welcome ${googleUserInfo['first_name']}! Please complete your profile.'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          if (data['requires_profile_completion'] == true) {
+            // New Google user - needs profile completion
+            final googleUserInfo = data['google_user_info'];
 
-          _navigateToAccountSetup();
-        } else {
-          // Existing user - check setup completion
-          final user = data['user'];
-          final setupComplete = user['setup_complete'] ?? false;
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                    'Welcome ${googleUserInfo['first_name']}! Please complete your profile.'),
+                backgroundColor: Colors.green,
+              ),
+            );
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Welcome back, ${user['first_name']}!'),
-              backgroundColor: Colors.green,
-            ),
-          );
-
-          if (setupComplete) {
-            _navigateToDashboard();
+            // Navigate to signup completion
+            Navigator.of(context).pushNamed('/candidate/signup');
           } else {
-            _navigateToAccountSetup();
+            // Existing user - check setup completion
+            final user = data['user'];
+            final setupComplete = user['setup_complete'] ?? false;
+
+            // Show welcome message
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Welcome back, ${user['first_name']}!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+
+            // Navigate based on setup completion
+            if (setupComplete) {
+              _navigateToDashboard();
+            } else {
+              _navigateToAccountSetup();
+            }
           }
+        } else {
+          // API error
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(apiResult['message']),
+              backgroundColor: Colors.red,
+            ),
+          );
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Google Sign-In failed: ${result['message']}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        // Handle different types of sign-in failures
+        if (result.type == GoogleSignInControllerResultType.cancelled) {
+          // User cancelled - don't show error message
+          print('User cancelled Google Sign-In');
+        } else {
+          // Actual error
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Google Sign-In failed: ${result.error}'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
     } catch (e) {
       setState(() {
         _isLoading = false;
       });
 
+      print('=== GOOGLE SIGNIN ERROR ===');
+      print('Error: $e');
+
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Google Sign-In error: $e'),
+        const SnackBar(
+          content:
+              Text('Connection error: Please check your internet connection'),
           backgroundColor: Colors.red,
         ),
       );
@@ -629,4 +659,134 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (context) => const SelectionModal(),
     );
   }
+// test codes
+/*
+  // ADD THESE TEST METHODS TO YOUR _LoginScreenState CLASS
+  // (Add them at the end of the class, before the final closing brace)
+
+  /// Test method for web Google Sign-In service initialization
+  void _testWebGoogleSignIn() async {
+    // Only test on web platform
+    if (!PlatformUtils.isWeb) {
+      print('⚠️ Skipping web Google Sign-In test - not on web platform');
+      return;
+    }
+
+    try {
+      print('\n🔧 TESTING WEB GOOGLE SIGN-IN SERVICE 🔧');
+
+      // Get the web service instance
+      final webService = GoogleSignInWebService.instance;
+
+      // Initialize the service
+      print('🔄 Initializing web service...');
+      await webService.initialize();
+      print('✅ Web service initialized');
+
+      // Check current state
+      print('📊 Current state:');
+      print('  - Is signed in: ${webService.isSignedIn}');
+      print('  - Current user: ${webService.currentUser?.email ?? 'None'}');
+
+      print('🔧 WEB GOOGLE SIGN-IN SERVICE TEST COMPLETE 🔧\n');
+    } catch (e) {
+      print('❌ Web service test failed: $e');
+    }
+  }
+
+  /// Test method for full sign-in flow (optional - for later testing)
+  void _testWebSignInFlow() async {
+    if (!PlatformUtils.isWeb) {
+      print('⚠️ Web sign-in test only available on web platform');
+      return;
+    }
+
+    try {
+      print('\n🚀 TESTING WEB SIGN-IN FLOW 🚀');
+
+      final webService = GoogleSignInWebService.instance;
+
+      // Attempt sign-in
+      final result = await webService.signIn();
+
+      print('📊 Sign-in result:');
+      print('  - Success: ${result.success}');
+      print('  - Type: ${result.type}');
+      print('  - Account: ${result.account?.email ?? 'None'}');
+      print('  - Has idToken: ${result.authentication?.idToken != null}');
+      print(
+          '  - Has accessToken: ${result.authentication?.accessToken != null}');
+
+      if (result.success && result.authentication?.idToken != null) {
+        print('✅ SUCCESS: Web Google Sign-In completed with idToken!');
+        print(
+            '🔑 idToken preview: ${result.authentication!.idToken!.substring(0, 50)}...');
+      } else {
+        print('❌ FAILED: ${result.error ?? 'Unknown error'}');
+      }
+
+      print('🚀 WEB SIGN-IN FLOW TEST COMPLETE 🚀\n');
+    } catch (e) {
+      print('❌ Web sign-in flow test failed: $e');
+    }
+  }
+
+  // Add this method to your LoginScreen class for testing
+  void _testMobileGoogleSignIn() async {
+    try {
+      print('\n📱 TESTING MOBILE GOOGLE SIGN-IN SERVICE 📱');
+
+      // Get the mobile service instance
+      final mobileService = GoogleSignInMobileService.instance;
+
+      // Initialize the service
+      print('🔄 Initializing mobile service...');
+      await mobileService.initialize();
+      print('✅ Mobile service initialized');
+
+      // Check current state
+      print('📊 Current state:');
+      print('  - Platform: ${PlatformUtils.platformName}');
+      print('  - Is mobile platform: ${PlatformUtils.isMobile}');
+      print('  - Is signed in: ${mobileService.isSignedIn}');
+      print('  - Current user: ${mobileService.currentUser?.email ?? 'None'}');
+
+      print('📱 MOBILE GOOGLE SIGN-IN SERVICE TEST COMPLETE 📱\n');
+    } catch (e) {
+      print('❌ Mobile service test failed: $e');
+    }
+  }
+
+// Add this to test actual mobile sign-in (call this from a button press)
+  void _testMobileSignInFlow() async {
+    try {
+      print('\n🚀 TESTING MOBILE SIGN-IN FLOW 🚀');
+
+      final mobileService = GoogleSignInMobileService.instance;
+
+      // Attempt sign-in
+      final result = await mobileService.signIn();
+
+      print('📊 Mobile sign-in result:');
+      print('  - Success: ${result.success}');
+      print('  - Type: ${result.type}');
+      print('  - Account: ${result.account?.email ?? 'None'}');
+      print('  - Has idToken: ${result.authentication?.idToken != null}');
+      print(
+          '  - Has accessToken: ${result.authentication?.accessToken != null}');
+
+      if (result.success && result.authentication?.idToken != null) {
+        print('✅ SUCCESS: Mobile Google Sign-In completed with idToken!');
+        print(
+            '🔑 idToken preview: ${result.authentication!.idToken!.substring(0, 50)}...');
+      } else {
+        print('❌ FAILED: ${result.error ?? 'Unknown error'}');
+      }
+
+      print('🚀 MOBILE SIGN-IN FLOW TEST COMPLETE 🚀\n');
+    } catch (e) {
+      print('❌ Mobile sign-in flow test failed: $e');
+    }
+  }
+  */
 }

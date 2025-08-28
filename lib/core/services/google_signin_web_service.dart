@@ -85,15 +85,16 @@ class GoogleSignInWebService {
     try {
       _debugLog('🚀 Starting web Google Sign-In flow...');
 
-      // First try silent sign-in
-      GoogleSignInAccount? account = await _attemptSilentSignIn();
+      // Try silent sign-in first
+      GoogleSignInAccount? account = await _googleSignIn.signInSilently(
+        reAuthenticate: true,
+      );
 
-      // If no cached account, use interactive sign-in
+      // If no account from silent sign-in, use interactive sign-in
       if (account == null) {
         _debugLog('📱 No cached account, starting interactive sign-in...');
 
-        // Use the traditional signIn() method for now
-        // Note: We'll enhance this with renderButton() in a future iteration
+        // WARNING: This is deprecated but still works for access tokens
         account = await _googleSignIn.signIn();
       }
 
@@ -105,16 +106,23 @@ class GoogleSignInWebService {
       // Get authentication details
       final GoogleSignInAuthentication auth = await account.authentication;
 
-      // Validate that we have the required tokens
-      if (auth.idToken == null) {
-        _debugLog('❌ Failed to get idToken');
-        throw Exception('Failed to get Google ID token for web platform');
-      }
-
-      _debugLog('✅ Web Google Sign-In successful!');
+      // On web, we won't get ID token, only access token
       _debugLog('📧 Email: ${account.email}');
       _debugLog('🔑 Has idToken: ${auth.idToken != null}');
       _debugLog('🎫 Has accessToken: ${auth.accessToken != null}');
+
+      if (auth.accessToken == null) {
+        _debugLog('❌ Failed to get any authentication token');
+        throw Exception('Failed to get authentication tokens');
+      }
+
+      // Accept that we might not have ID token on web
+      if (auth.idToken == null) {
+        _debugLog(
+            '⚠️ No ID token available (expected on web), using access token');
+      } else {
+        _debugLog('✅ ID token available!');
+      }
 
       return GoogleSignInResult.success(
         account: account,

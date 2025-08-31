@@ -503,58 +503,147 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// Handle Google Sign-In with proper navigation
+  /// Handle Google Sign-In with proper navigation - FIXED FOR WEB
   void _handleGoogleSignIn() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
+      print('🔧 === STARTING GOOGLE SIGN-IN ===');
+
       final controller = GoogleSignInController.instance;
       await controller.initialize();
       final result = await controller.signIn();
 
-      setState(() {
-        _isLoading = false;
-      });
+      print('🔧 Google Sign-In Result: ${result.success}');
+      print('🔧 Platform: ${result.platformUsed}');
+      print('🔧 Has Account: ${result.account != null}');
+      print('🔧 Has Auth: ${result.authentication != null}');
 
       if (result.success &&
           result.account != null &&
           result.authentication != null) {
-        // On web, we might only have access token
         final idToken = result.authentication!.idToken;
         final accessToken = result.authentication!.accessToken;
 
-        if (idToken == null && accessToken == null) {
-          throw Exception('No authentication tokens received');
+        print(
+            '🔧 ID Token Available: ${idToken != null && idToken.isNotEmpty}');
+        print(
+            '🔧 Access Token Available: ${accessToken != null && accessToken.isNotEmpty}');
+
+        // FIXED: Validate we have at least one valid token
+        final hasValidIdToken = idToken != null && idToken.trim().isNotEmpty;
+        final hasValidAccessToken =
+            accessToken != null && accessToken.trim().isNotEmpty;
+
+        if (!hasValidIdToken && !hasValidAccessToken) {
+          throw Exception(
+              'No valid authentication tokens received from Google');
         }
 
-        // Call API with whatever tokens we have
-        final apiResult = await ApiService.googleSignIn(
-          idToken: idToken ?? '', // Send empty string if no ID token
-          accessToken: accessToken,
+        // FIXED: Call API with proper token handling
+        print('🔧 Calling API with tokens...');
+        final apiResult = await ApiService.googleSignInDebug(
+          idToken: hasValidIdToken ? idToken! : '',
+          accessToken: hasValidAccessToken ? accessToken : null,
         );
+
+        print('🔧 API Result Success: ${apiResult['success']}');
 
         if (apiResult['success']) {
           // Handle successful login
           final data = apiResult['data'];
-          // ... rest of your login handling code
+          final user = data['user'];
+
+          print(
+              '🔧 Login successful for: ${user['first_name']} ${user['last_name']}');
+
+          // Check if account setup is complete
+          final setupComplete = user['account_setup_completed'] == 1 ||
+              user['account_setup_completed'] == true ||
+              user['account_setup_completed'] == '1';
+
+          // Show welcome message
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Welcome back, ${user['first_name']}!'),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+          }
+
+          // Navigate based on setup completion
+          await Future.delayed(
+              const Duration(milliseconds: 500)); // Brief delay for UX
+
+          if (setupComplete) {
+            print('🔧 Navigating to dashboard...');
+            _navigateToDashboard();
+          } else {
+            print('🔧 Navigating to account setup...');
+            _navigateToAccountSetup();
+          }
         } else {
           // Handle API error
+          final errorMessage = apiResult['message'] ?? 'Authentication failed';
+          print('🔧 API Error: $errorMessage');
+
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(errorMessage),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        }
+      } else {
+        // Handle sign-in failure
+        String errorMessage = 'Google Sign-In failed';
+
+        if (result.type == GoogleSignInControllerResultType.cancelled) {
+          errorMessage = 'Sign-in was cancelled';
+        } else if (result.error != null) {
+          errorMessage = result.error!;
+        }
+
+        print('🔧 Sign-in failed: $errorMessage');
+
+        if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(apiResult['message'] ?? 'Authentication failed'),
-              backgroundColor: Colors.red,
+              content: Text(errorMessage),
+              backgroundColor: Colors.orange,
+              duration: const Duration(seconds: 2),
             ),
           );
         }
       }
     } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      // Handle error
+      print('🔧 Google Sign-In Exception: $e');
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Sign-in error: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
     }
+
+    print('🔧 === GOOGLE SIGN-IN COMPLETE ===');
   }
 
   /// Navigate to account setup

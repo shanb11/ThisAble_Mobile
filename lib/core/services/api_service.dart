@@ -4,6 +4,10 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:file_picker/file_picker.dart'; // Add this line
 import '../../config/api_endpoints.dart';
 import '../../config/dynamic_api_config.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:math' as math;
+// Only add this import if you're on web
+import 'dart:html' as html;
 
 class ApiService {
   /// Add these methods anywhere in your ApiService class:
@@ -64,8 +68,9 @@ class ApiService {
   // ===========================================
 
   /// Build API URI consistently
-  static Uri _buildApiUri(String endpoint) {
-    return Uri.parse('${ApiEndpoints.baseUrl}/$endpoint');
+  static Future<Uri> _buildApiUri(String endpoint) async {
+    final baseUrl = await DynamicApiConfig.getBaseUrl();
+    return Uri.parse('$baseUrl/$endpoint');
   }
 
   //added
@@ -76,7 +81,7 @@ class ApiService {
       print('🔧 Token: ${token?.substring(0, 20)}...');
 
       final response = await http.get(
-        _buildApiUri(endpoint),
+        await _buildApiUri(endpoint), // FIXED: await the async method
         headers: await _getHeaders(includeAuth: true),
       );
 
@@ -90,7 +95,7 @@ class ApiService {
     }
   }
 
-  /// Common headers for API requests
+  /// Common headers for API requests - FIXED NULL HANDLING
   static Future<Map<String, String>> _getHeaders(
       {bool includeAuth = false}) async {
     Map<String, String> headers = {
@@ -100,17 +105,26 @@ class ApiService {
 
     if (includeAuth) {
       final token = await getToken();
-      if (token != null && token.isNotEmpty) {
-        headers['Authorization'] = 'Bearer $token';
+      if (token != null && token.isNotEmpty && token.trim().isNotEmpty) {
+        headers['Authorization'] = 'Bearer ${token.trim()}';
         print(
             '🔧 Authorization header set: Bearer ${token.substring(0, 20)}...');
       } else {
-        print('🔧 No token found for auth header');
+        print('🔧 No valid token found for auth header');
       }
     }
 
     print('🔧 Headers: ${headers.keys.toList()}');
-    return headers;
+
+    // FIXED: Verify no null values in headers
+    final cleanHeaders = <String, String>{};
+    headers.forEach((key, value) {
+      if (key != null && value != null && key.isNotEmpty && value.isNotEmpty) {
+        cleanHeaders[key] = value;
+      }
+    });
+
+    return cleanHeaders;
   }
 
   /// Handle API response (matches your PHP ApiResponse format)
@@ -142,19 +156,28 @@ class ApiService {
     }
   }
 
-  /// Enhanced authenticated request handler
+  /// Enhanced authenticated request handler - FIXED NULL HANDLING
   static Future<Map<String, dynamic>> _makeAuthenticatedRequest(
     String endpoint,
     Map<String, dynamic> body,
   ) async {
     try {
       print('🔧 Making authenticated request to: $endpoint');
-      print('🔧 Request body: $body');
+
+      // FIXED: Clean request body of null values
+      final cleanBody = <String, dynamic>{};
+      body.forEach((key, value) {
+        if (value != null) {
+          cleanBody[key] = value;
+        }
+      });
+
+      print('🔧 Request body keys: ${cleanBody.keys.toList()}');
 
       final response = await http.post(
-        _buildApiUri(endpoint),
+        await _buildApiUri(endpoint), // FIXED: await the async method
         headers: await _getHeaders(includeAuth: true),
-        body: json.encode(body),
+        body: json.encode(cleanBody),
       );
 
       print('🔧 Response status: ${response.statusCode}');
@@ -243,7 +266,7 @@ class ApiService {
     }
   }
 
-  /// Google Sign-In
+  /// COMPLETELY REWRITTEN Google Sign-In method - NULL-PROOF
   static Future<Map<String, dynamic>> googleSignIn({
     required String idToken,
     String? accessToken,
@@ -251,34 +274,62 @@ class ApiService {
     Map<String, dynamic>? additionalData,
   }) async {
     try {
-      Map<String, dynamic> requestBody = {
-        'idToken': idToken,
-        'action': action,
+      print('🔧 === ENHANCED GOOGLE SIGN-IN START ===');
+      print('🔧 Platform: ${kIsWeb ? "WEB" : "MOBILE"}');
+
+      // Build safe request body
+      final requestBody = <String, dynamic>{
+        'action': action.isNotEmpty ? action : 'login',
       };
 
-      if (accessToken != null) {
-        requestBody['accessToken'] = accessToken;
+      // Handle tokens safely
+      final cleanIdToken = idToken.trim();
+      final cleanAccessToken = accessToken?.trim() ?? '';
+
+      bool hasValidIdToken = cleanIdToken.isNotEmpty;
+      bool hasValidAccessToken = cleanAccessToken.isNotEmpty;
+
+      if (hasValidIdToken) {
+        requestBody['idToken'] = cleanIdToken;
       }
 
-      // Add additional data for profile completion
-      if (additionalData != null) {
-        requestBody.addAll(additionalData);
+      if (hasValidAccessToken) {
+        requestBody['accessToken'] = cleanAccessToken;
       }
+
+      // Must have at least one token
+      if (!hasValidIdToken && !hasValidAccessToken) {
+        return {
+          'success': false,
+          'message': 'No valid authentication tokens available'
+        };
+      }
+
+      // Add additional data safely
+      if (additionalData != null) {
+        final cleanAdditionalData = _deepCleanMap(additionalData);
+        requestBody.addAll(cleanAdditionalData);
+      }
+
+      print('🔧 Request body keys: ${requestBody.keys.toList()}');
+
+      // Get dynamic base URL
+      final baseUrl = await DynamicApiConfig.getBaseUrl();
+      final googleAuthUrl = '$baseUrl/auth/google.php';
 
       final response = await http.post(
-        Uri.parse(ApiEndpoints.googleAuth),
+        Uri.parse(googleAuthUrl),
         headers: await _getHeaders(),
         body: json.encode(requestBody),
       );
 
       final result = _handleResponse(response);
 
-      // Store token and user data if Google sign-in successful
+      // Store tokens if successful
       if (result['success'] && result['data'] != null) {
         final data = result['data'];
         if (data['token'] != null) {
           await setToken(data['token']);
-          print('DEBUG: Token saved after Google Sign-In');
         }
         if (data['user'] != null) {
           await setCurrentUser(data['user']);
@@ -286,7 +337,8 @@ class ApiService {
       }
 
       return result;
-    } catch (e) {
+    } catch (e, stackTrace) {
+      print('🔧 Google Sign-In error: $e');
       return {'success': false, 'message': 'Network error: $e'};
     }
   }
@@ -614,7 +666,7 @@ class ApiService {
     return ApiEndpoints.baseUrl.replaceAll('localhost', '10.0.2.2');
   }
 
-  /// Upload resume file - Fixed for mobile compatibility
+  /// Upload resume file - FIXED NULL HANDLING FOR WEB
   static Future<Map<String, dynamic>> uploadResume({
     required PlatformFile file,
   }) async {
@@ -627,7 +679,7 @@ class ApiService {
 
       // Check authentication
       final token = await getToken();
-      if (token == null || token.isEmpty) {
+      if (token == null || token.isEmpty || token.trim().isEmpty) {
         return {
           'success': false,
           'message': 'Authentication required',
@@ -646,37 +698,58 @@ class ApiService {
         _buildApiUri('candidate/upload_resume.php'),
       );
 
-      // Add headers
-      request.headers.addAll({
-        'Authorization': 'Bearer $token',
-        'Accept': 'application/json',
-      });
+      // FIXED: Add headers with null checking
+      final cleanHeaders = <String, String>{};
+      cleanHeaders['Accept'] = 'application/json';
 
-      // FIXED: Use file path instead of bytes for mobile compatibility
-      if (file.path != null) {
+      final trimmedToken = token.trim();
+      if (trimmedToken.isNotEmpty) {
+        cleanHeaders['Authorization'] = 'Bearer $trimmedToken';
+      }
+
+      request.headers.addAll(cleanHeaders);
+
+      // FIXED: Handle file upload with proper null checking
+      bool fileAdded = false;
+
+      if (file.path != null && file.path!.isNotEmpty) {
         // Use file path (works on mobile)
-        request.files.add(
-          await http.MultipartFile.fromPath(
-            'resume_file',
-            file.path!,
-            filename: file.name,
-          ),
-        );
-        print('🔧 Added file from path: ${file.path}');
-      } else if (file.bytes != null) {
+        try {
+          request.files.add(
+            await http.MultipartFile.fromPath(
+              'resume_file',
+              file.path!,
+              filename: file.name.isNotEmpty ? file.name : 'resume.pdf',
+            ),
+          );
+          fileAdded = true;
+          print('🔧 Added file from path: ${file.path}');
+        } catch (e) {
+          print('🔧 Failed to add file from path: $e');
+        }
+      }
+
+      if (!fileAdded && file.bytes != null && file.bytes!.isNotEmpty) {
         // Fallback to bytes (for web)
-        request.files.add(
-          http.MultipartFile.fromBytes(
-            'resume_file',
-            file.bytes!,
-            filename: file.name,
-          ),
-        );
-        print('🔧 Added file from bytes');
-      } else {
+        try {
+          request.files.add(
+            http.MultipartFile.fromBytes(
+              'resume_file',
+              file.bytes!,
+              filename: file.name.isNotEmpty ? file.name : 'resume.pdf',
+            ),
+          );
+          fileAdded = true;
+          print('🔧 Added file from bytes');
+        } catch (e) {
+          print('🔧 Failed to add file from bytes: $e');
+        }
+      }
+
+      if (!fileAdded) {
         return {
           'success': false,
-          'message': 'File data not available - no path or bytes'
+          'message': 'File data not available - no valid path or bytes'
         };
       }
 
@@ -1071,5 +1144,523 @@ class ApiService {
     } catch (e) {
       return false;
     }
+  }
+
+  /// Web-safe HTTP POST method - COMPLETELY NULL-PROOF
+  static Future<http.Response> _webSafePost({
+    required Uri uri,
+    required Map<String, String> headers,
+    required Map<String, dynamic> body,
+  }) async {
+    try {
+      // ULTRA-SAFE: Remove all null values and ensure strings
+      final ultraCleanHeaders = <String, String>{};
+      headers.forEach((key, value) {
+        if (key != null &&
+            value != null &&
+            key.toString().trim().isNotEmpty &&
+            value.toString().trim().isNotEmpty) {
+          ultraCleanHeaders[key.toString().trim()] = value.toString().trim();
+        }
+      });
+
+      // ULTRA-SAFE: Clean request body recursively
+      final ultraCleanBody = _deepCleanMap(body);
+
+      // ULTRA-SAFE: Ensure JSON can be encoded
+      String jsonBody;
+      try {
+        jsonBody = json.encode(ultraCleanBody);
+      } catch (e) {
+        print('🔧 JSON Encoding Error: $e');
+        throw Exception('Failed to encode request body: $e');
+      }
+
+      print('🔧 ULTRA-CLEAN Headers: $ultraCleanHeaders');
+      print('🔧 ULTRA-CLEAN Body: ${ultraCleanBody.keys.toList()}');
+      print('🔧 JSON Body Length: ${jsonBody.length}');
+
+      // Make the actual request
+      return await http.post(
+        uri,
+        headers: ultraCleanHeaders,
+        body: jsonBody,
+      );
+    } catch (e) {
+      print('🔧 _webSafePost Error: $e');
+      rethrow;
+    }
+  }
+
+  /// Recursively clean a map of all null values
+  static Map<String, dynamic> _deepCleanMap(Map<String, dynamic> input) {
+    final cleaned = <String, dynamic>{};
+
+    input.forEach((key, value) {
+      if (key != null && key.toString().trim().isNotEmpty) {
+        final cleanKey = key.toString().trim();
+
+        if (value == null) {
+          // Skip null values entirely
+          return;
+        } else if (value is String) {
+          if (value.isNotEmpty) {
+            cleaned[cleanKey] = value;
+          }
+        } else if (value is Map) {
+          final cleanedSubMap = _deepCleanMap(value.cast<String, dynamic>());
+          if (cleanedSubMap.isNotEmpty) {
+            cleaned[cleanKey] = cleanedSubMap;
+          }
+        } else if (value is List) {
+          final cleanedList = value.where((item) => item != null).toList();
+          if (cleanedList.isNotEmpty) {
+            cleaned[cleanKey] = cleanedList;
+          }
+        } else {
+          // For other types (int, bool, etc.), include them
+          cleaned[cleanKey] = value;
+        }
+      }
+    });
+
+    return cleaned;
+  }
+
+  /// Add this debug method to your ApiService class
+  static Future<void> debugGoogleAuthConfiguration() async {
+    print('🔍 === ROOT CAUSE ANALYSIS START ===');
+
+    try {
+      // 1. Check all URL configurations
+      print('🔍 STEP 1: URL Configuration Analysis');
+      print('🔍 AppConstants.baseUrl: "${AppConstants.baseUrl}"');
+      print(
+          '🔍 AppConstants.candidateGoogleAuth: "${AppConstants.candidateGoogleAuth}"');
+      print('🔍 ApiEndpoints.baseUrl: "${ApiEndpoints.baseUrl}"');
+      print('🔍 ApiEndpoints.googleAuth: "${ApiEndpoints.googleAuth}"');
+
+      // 2. Check if any URLs are null or contain null
+      final googleAuthUrl = ApiEndpoints.googleAuth;
+      print('🔍 Final googleAuth URL: "$googleAuthUrl"');
+      print('🔍 googleAuth URL is null: ${googleAuthUrl == null}');
+      print(
+          '🔍 googleAuth URL contains "null": ${googleAuthUrl.contains("null")}');
+      print('🔍 googleAuth URL length: ${googleAuthUrl.length}');
+
+      // 3. Check URI parsing
+      try {
+        final uri = Uri.parse(googleAuthUrl);
+        print('🔍 URI parsed successfully');
+        print('🔍 URI scheme: "${uri.scheme}"');
+        print('🔍 URI host: "${uri.host}"');
+        print('🔍 URI port: ${uri.port}');
+        print('🔍 URI path: "${uri.path}"');
+        print('🔍 URI hasEmptyPath: ${uri.hasEmptyPath}');
+      } catch (e) {
+        print('🔍 ❌ URI parsing failed: $e');
+      }
+
+      // 4. Check Dynamic API Config (if it exists)
+      try {
+        final dynamicStatus = await DynamicApiConfig.getStatus();
+        print('🔍 STEP 2: Dynamic API Config Analysis');
+        print('🔍 Dynamic config: $dynamicStatus');
+      } catch (e) {
+        print('🔍 Dynamic API Config not available or errored: $e');
+      }
+
+      // 5. Test basic header creation
+      print('🔍 STEP 3: Headers Analysis');
+      try {
+        final headers = await _getHeaders();
+        print(
+            '🔍 Basic headers created successfully: ${headers.keys.toList()}');
+        headers.forEach((key, value) {
+          print('🔍   $key: "${value}" (null: ${value == null})');
+        });
+      } catch (e) {
+        print('🔍 ❌ Header creation failed: $e');
+      }
+
+      // 6. Test JSON encoding with minimal data
+      print('🔍 STEP 4: JSON Encoding Test');
+      try {
+        final testBody = {'action': 'login', 'test': 'value'};
+        final jsonString = json.encode(testBody);
+        print('🔍 JSON encoding successful: $jsonString');
+      } catch (e) {
+        print('🔍 ❌ JSON encoding failed: $e');
+      }
+
+      // 7. Check platform-specific issues
+      print('🔍 STEP 5: Platform Analysis');
+      print('🔍 Platform: ${kIsWeb ? "WEB" : "MOBILE"}');
+      if (kIsWeb) {
+        try {
+          print('🔍 Web user agent: ${html.window.navigator.userAgent}');
+          print('🔍 Web location: ${html.window.location.href}');
+          print('🔍 Web protocol: ${html.window.location.protocol}');
+        } catch (e) {
+          print('🔍 Web info gathering failed: $e');
+        }
+      }
+
+      // 8. Test basic network connectivity
+      print('🔍 STEP 6: Network Connectivity Test');
+      try {
+        // Test a simple GET to your test endpoint
+        final testUrl = googleAuthUrl.replaceAll('google.php', 'test.php');
+        print('🔍 Testing connectivity to: $testUrl');
+
+        final response = await http.get(
+          Uri.parse(testUrl),
+          headers: {'Accept': 'application/json'},
+        ).timeout(const Duration(seconds: 10));
+
+        print('🔍 Test response status: ${response.statusCode}');
+        print('🔍 Test response body length: ${response.body.length}');
+      } catch (e) {
+        print('🔍 ❌ Network test failed: $e');
+      }
+    } catch (e, stackTrace) {
+      print('🔍 ❌ Debug analysis failed: $e');
+      print('🔍 Stack trace: $stackTrace');
+    }
+
+    print('🔍 === ROOT CAUSE ANALYSIS COMPLETE ===');
+  }
+
+  /// Enhanced Google Sign-In with detailed logging
+  static Future<Map<String, dynamic>> googleSignInDebug({
+    required String idToken,
+    String? accessToken,
+    String action = 'login',
+    Map<String, dynamic>? additionalData,
+  }) async {
+    // First run the diagnostic
+    await debugGoogleAuthConfiguration();
+
+    try {
+      print('🔧 === DETAILED GOOGLE SIGN-IN DEBUG ===');
+      print('🔧 Input idToken: "${idToken}" (length: ${idToken.length})');
+      print(
+          '🔧 Input accessToken: "${accessToken ?? 'NULL'}" (null: ${accessToken == null})');
+      print('🔧 Input action: "$action"');
+      print(
+          '🔧 Input additionalData: ${additionalData?.keys.toList() ?? 'NULL'}');
+
+      // Build request body with extreme logging
+      final requestBody = <String, dynamic>{};
+      print('🔧 Building request body...');
+
+      // Action
+      requestBody['action'] = action;
+      print('🔧 Added action: "$action"');
+
+      // ID Token
+      if (idToken.isNotEmpty) {
+        requestBody['idToken'] = idToken;
+        print('🔧 Added idToken (length: ${idToken.length})');
+      } else {
+        print('🔧 Skipped idToken (empty)');
+      }
+
+      // Access Token
+      if (accessToken != null && accessToken.isNotEmpty) {
+        requestBody['accessToken'] = accessToken;
+        print('🔧 Added accessToken (length: ${accessToken.length})');
+      } else {
+        print('🔧 Skipped accessToken (null or empty)');
+      }
+
+      // Additional data
+      if (additionalData != null) {
+        additionalData.forEach((key, value) {
+          if (value != null) {
+            requestBody[key] = value;
+            print('🔧 Added additional data: $key = $value');
+          } else {
+            print('🔧 Skipped additional data: $key (null value)');
+          }
+        });
+      }
+
+      print('🔧 Final request body keys: ${requestBody.keys.toList()}');
+      print('🔧 Request body JSON test...');
+
+      // Test JSON encoding
+      String jsonBody;
+      try {
+        jsonBody = json.encode(requestBody);
+        print('🔧 JSON encoding successful (length: ${jsonBody.length})');
+        print(
+            '🔧 JSON preview: ${jsonBody.substring(0, math.min(100, jsonBody.length))}...');
+      } catch (e) {
+        print('🔧 ❌ JSON encoding failed: $e');
+        return {'success': false, 'message': 'JSON encoding error: $e'};
+      }
+
+      // Get headers
+      print('🔧 Getting headers...');
+      Map<String, String> headers;
+      try {
+        headers = await _getHeaders();
+        print('🔧 Headers obtained: ${headers.keys.toList()}');
+      } catch (e) {
+        print('🔧 ❌ Header creation failed: $e');
+        return {'success': false, 'message': 'Header creation error: $e'};
+      }
+
+      // Get URL
+      final url = ApiEndpoints.googleAuth;
+      print('🔧 Request URL: "$url"');
+
+      // Parse URI
+      Uri uri;
+      try {
+        uri = Uri.parse(url);
+        print('🔧 URI parsed successfully');
+      } catch (e) {
+        print('🔧 ❌ URI parsing failed: $e');
+        return {'success': false, 'message': 'URI parsing error: $e'};
+      }
+
+      // Make the actual request with detailed error catching
+      print('🔧 Making HTTP POST request...');
+
+      http.Response response;
+      try {
+        response = await http
+            .post(
+              uri,
+              headers: headers,
+              body: jsonBody,
+            )
+            .timeout(const Duration(seconds: 30));
+
+        print('🔧 ✅ HTTP request successful!');
+        print('🔧 Response status: ${response.statusCode}');
+        print('🔧 Response headers: ${response.headers.keys.toList()}');
+        print('🔧 Response body length: ${response.body.length}');
+      } catch (e, stackTrace) {
+        print('🔧 ❌ HTTP request failed: $e');
+        print('🔧 Error type: ${e.runtimeType}');
+        print('🔧 Stack trace: $stackTrace');
+
+        // Specific error analysis
+        if (e.toString().contains('XMLHttpRequest')) {
+          print(
+              '🔧 🎯 IDENTIFIED: XMLHttpRequest error - this is the root cause!');
+        }
+        if (e.toString().contains('Cannot send Null')) {
+          print(
+              '🔧 🎯 IDENTIFIED: Cannot send Null - checking what might be null...');
+          print('🔧   - URI: $uri');
+          print('🔧   - Headers: $headers');
+          print('🔧   - Body: $jsonBody');
+        }
+
+        return {'success': false, 'message': 'HTTP request error: $e'};
+      }
+
+      // Handle response
+      return _handleResponse(response);
+    } catch (e, stackTrace) {
+      print('🔧 ❌ Google Sign-In Debug failed: $e');
+      print('🔧 Stack trace: $stackTrace');
+      return {'success': false, 'message': 'Debug sign-in failed: $e'};
+    }
+  }
+
+  // Add this debug method to test the fixes
+  static Future<void> debugWebPlatformFix() async {
+    print('🔍 === WEB PLATFORM FIX DEBUG TEST ===');
+
+    try {
+      // Test 1: Check platform detection
+      print('🔍 Platform: ${kIsWeb ? "WEB" : "MOBILE"}');
+
+      // Test 2: Test network discovery
+      print('🔍 Testing network discovery...');
+      final discoveredIP = await NetworkDiscoveryService.findWorkingIP();
+      print('🔍 Discovered IP: $discoveredIP');
+      print('🔍 IP is null: ${discoveredIP == null}');
+      print('🔍 IP is empty: ${discoveredIP?.isEmpty ?? true}');
+
+      // Test 3: Test dynamic API config
+      print('🔍 Testing dynamic API config...');
+      final initSuccess = await DynamicApiConfig.initialize();
+      print('🔍 Init success: $initSuccess');
+
+      final baseUrl = await DynamicApiConfig.getBaseUrl();
+      print('🔍 Base URL: $baseUrl');
+      print('🔍 Base URL is null: ${baseUrl == null}');
+      print('🔍 Base URL contains "null": ${baseUrl.contains("null")}');
+
+      // Test 4: Test API endpoints
+      print('🔍 Testing API endpoints...');
+      print('🔍 Google Auth URL: ${ApiEndpoints.googleAuth}');
+      print(
+          '🔍 Google Auth contains "null": ${ApiEndpoints.googleAuth.contains("null")}');
+
+      // Test 5: Test basic connectivity
+      print('🔍 Testing basic connectivity...');
+      try {
+        final response = await http.get(
+          Uri.parse('${baseUrl}/test.php'),
+          headers: {'Accept': 'application/json'},
+        ).timeout(const Duration(seconds: 10));
+
+        print('🔍 ✅ Connection test SUCCESS: ${response.statusCode}');
+        if (response.body.isNotEmpty) {
+          print('🔍 Response preview: ${response.body.substring(0, 100)}...');
+        }
+      } catch (e) {
+        print('🔍 ❌ Connection test FAILED: $e');
+      }
+
+      // Test 6: Test Google Sign-In URL construction
+      print('🔍 Testing Google Sign-In URL construction...');
+      final googleUrl = ApiEndpoints.googleAuth;
+      final uri = Uri.parse(googleUrl);
+      print('🔍 Google URL scheme: ${uri.scheme}');
+      print('🔍 Google URL host: ${uri.host}');
+      print('🔍 Google URL path: ${uri.path}');
+      print('🔍 Google URL is valid: ${uri.hasScheme && uri.hasAuthority}');
+    } catch (e, stackTrace) {
+      print('🔍 ❌ Debug test failed: $e');
+      print('🔍 Stack trace: $stackTrace');
+    }
+
+    print('🔍 === DEBUG TEST COMPLETE ===');
+  }
+
+// Add this to your ApiService class for easy testing
+  static Future<Map<String, dynamic>> testWebGoogleSignIn({
+    required String idToken,
+    String? accessToken,
+  }) async {
+    print('🔧 === TESTING WEB GOOGLE SIGN-IN ===');
+
+    // First run debug test
+    await debugWebPlatformFix();
+
+    try {
+      // Build safe request body
+      final requestBody = <String, dynamic>{
+        'action': 'login',
+      };
+
+      if (idToken.trim().isNotEmpty) {
+        requestBody['idToken'] = idToken.trim();
+      }
+
+      if (accessToken != null && accessToken.trim().isNotEmpty) {
+        requestBody['accessToken'] = accessToken.trim();
+      }
+
+      print('🔧 Request body: ${requestBody.keys}');
+
+      // Get guaranteed non-null URL
+      final url = ApiEndpoints.googleAuth;
+      print('🔧 Using URL: $url');
+
+      // Make safe request
+      final response = await http
+          .post(
+            Uri.parse(url),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: json.encode(requestBody),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      print('🔧 ✅ Request successful!');
+      print('🔧 Status: ${response.statusCode}');
+      print('🔧 Response: ${response.body}');
+
+      return _handleResponse(response);
+    } catch (e, stackTrace) {
+      print('🔧 ❌ Test request failed: $e');
+      print('🔧 Error type: ${e.runtimeType}');
+      print('🔧 Stack trace: $stackTrace');
+
+      return {
+        'success': false,
+        'message': 'Test request failed: $e',
+      };
+    }
+  }
+
+  /// Deep clean map of null values
+  static Map<String, dynamic> _deepCleanMap(Map<String, dynamic> input) {
+    final cleaned = <String, dynamic>{};
+
+    input.forEach((key, value) {
+      if (key != null && key.toString().trim().isNotEmpty) {
+        final cleanKey = key.toString().trim();
+
+        if (value == null) {
+          return; // Skip null values
+        } else if (value is String) {
+          if (value.isNotEmpty) {
+            cleaned[cleanKey] = value;
+          }
+        } else if (value is Map) {
+          final cleanedSubMap = _deepCleanMap(value.cast<String, dynamic>());
+          if (cleanedSubMap.isNotEmpty) {
+            cleaned[cleanKey] = cleanedSubMap;
+          }
+        } else if (value is List) {
+          final cleanedList = value.where((item) => item != null).toList();
+          if (cleanedList.isNotEmpty) {
+            cleaned[cleanKey] = cleanedList;
+          }
+        } else {
+          cleaned[cleanKey] = value;
+        }
+      }
+    });
+
+    return cleaned;
+  }
+
+  /// DEBUG METHOD: Test web platform fixes
+  static Future<void> debugWebPlatformFix() async {
+    print('🔍 === WEB PLATFORM DEBUG TEST ===');
+
+    try {
+      print('🔍 Platform: ${kIsWeb ? "WEB" : "MOBILE"}');
+
+      // Test network discovery
+      final discoveredIP = await NetworkDiscoveryService.findWorkingIP();
+      print('🔍 Discovered IP: $discoveredIP');
+
+      // Test dynamic API config
+      final initSuccess = await DynamicApiConfig.initialize();
+      print('🔍 Config init: $initSuccess');
+
+      final baseUrl = await DynamicApiConfig.getBaseUrl();
+      print('🔍 Base URL: $baseUrl');
+
+      // Test connectivity
+      try {
+        final response = await http.get(
+          Uri.parse('$baseUrl/test.php'),
+          headers: {'Accept': 'application/json'},
+        ).timeout(const Duration(seconds: 10));
+
+        print('🔍 ✅ Connection test: SUCCESS (${response.statusCode})');
+      } catch (e) {
+        print('🔍 ❌ Connection test: FAILED ($e)');
+      }
+    } catch (e) {
+      print('🔍 ❌ Debug test failed: $e');
+    }
+
+    print('🔍 === DEBUG TEST COMPLETE ===');
   }
 }

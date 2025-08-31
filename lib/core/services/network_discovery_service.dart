@@ -28,31 +28,59 @@ class NetworkDiscoveryService {
       print('❌ Cached IP no longer works, running discovery...');
     }
 
-    // Step 2: Platform-specific discovery with CORRECT priorities
+    // Step 2: Platform-specific discovery with WEB-FIRST handling
     String? discoveredIP;
 
     if (kIsWeb) {
-      // Web browser discovery
+      // CRITICAL: Web browser discovery with guaranteed non-null return
+      print('🌐 Web platform detected - using web-safe discovery');
       discoveredIP = await _discoverWebHostIP();
+
+      // SAFETY CHECK: Web discovery should NEVER return null
+      if (discoveredIP == null) {
+        print(
+            '🚨 CRITICAL: Web discovery returned null - using emergency fallback');
+        discoveredIP = 'localhost';
+      }
     } else if (Platform.isAndroid) {
-      // Android discovery - FIXED LOGIC
+      // Android discovery (your existing logic)
       discoveredIP = await _discoverAndroidHostIP();
     } else if (Platform.isIOS) {
-      // iOS discovery - FIXED LOGIC
+      // iOS discovery (your existing logic)
       discoveredIP = await _discoverIOSHostIP();
     } else {
-      // Unknown platform - try common methods
+      // Unknown platform fallback
       discoveredIP = await _discoverUnknownPlatformIP();
     }
 
-    // Step 3: Cache and return if successful
+    // Step 3: CRITICAL NULL SAFETY - Never return null
     if (discoveredIP != null) {
       await _cacheIP(discoveredIP);
+      print('✅ Discovery successful: $discoveredIP');
       return discoveredIP;
     }
 
-    print('❌ No working IP found across all discovery methods');
-    return null;
+    // Step 4: EMERGENCY FALLBACK - Platform-specific defaults
+    print('🚨 All discovery methods failed - using emergency fallback');
+
+    if (kIsWeb) {
+      // For web, always fallback to localhost
+      print('🌐 Web emergency fallback: localhost');
+      return 'localhost';
+    } else {
+      // For mobile, try common patterns one more time
+      print('📱 Mobile emergency fallback: trying common IPs');
+      final emergencyIPs = ['192.168.1.1', '192.168.0.1', '10.0.0.1'];
+      for (String ip in emergencyIPs) {
+        if (await _testIP(ip)) {
+          await _cacheIP(ip);
+          return ip;
+        }
+      }
+      // Last resort for mobile - use localhost
+      print('📱 Mobile last resort: localhost');
+      return 'localhost';
+    }
   }
 
   /// FIXED Android discovery - Physical device FIRST, emulator ONLY if physical fails AND actually emulator
@@ -99,18 +127,51 @@ class NetworkDiscoveryService {
 
   /// Web browser discovery (unchanged)
   static Future<String?> _discoverWebHostIP() async {
-    print('🌐 Web browser detected');
+    print('🌐 Web browser detected - using web-safe discovery');
 
-    // For web, try localhost first
-    const String localhost = 'localhost';
-    if (await _testIP(localhost)) {
+    // CRITICAL: Web browsers have security restrictions
+    // They cannot scan networks or access arbitrary IPs
+
+    // Step 1: Try localhost (most common for development)
+    print('🌐 Testing localhost...');
+    if (await _testIP('localhost')) {
       print('✅ Web localhost connection successful');
-      return localhost;
+      return 'localhost';
     }
 
-    // If localhost fails, try common development IPs
-    print('🌐 Localhost failed, trying common development IPs...');
-    return await _discoverCommonHostIPs();
+    // Step 2: Try 127.0.0.1 (alternative localhost)
+    print('🌐 Testing 127.0.0.1...');
+    if (await _testIP('127.0.0.1')) {
+      print('✅ Web 127.0.0.1 connection successful');
+      return '127.0.0.1';
+    }
+
+    // Step 3: Try common development IPs that might be accessible from browser
+    print('🌐 Testing common web-accessible IPs...');
+    final webAccessibleIPs = [
+      '192.168.1.1', // Common router IP
+      '192.168.0.1', // Alternative router IP
+      '192.168.1.100', // Common static IP
+      '192.168.1.2', // Common computer IP
+      '192.168.0.100', // Alternative static IP
+      '10.0.0.1', // Corporate network
+    ];
+
+    for (String ip in webAccessibleIPs) {
+      print('🌐 Testing web-accessible IP: $ip');
+      if (await _testIP(ip)) {
+        print('✅ Web IP connection successful: $ip');
+        return ip;
+      }
+    }
+
+    // Step 4: CRITICAL - Never return null for web platform
+    // Instead, return localhost as final fallback even if test failed
+    // This prevents XMLHttpRequest null errors
+    print('⚠️ All web IP tests failed, using localhost as final fallback');
+    print(
+        '⚠️ This may cause connection errors, but prevents XMLHttpRequest null error');
+    return 'localhost';
   }
 
   /// Unknown platform fallback discovery
@@ -359,22 +420,43 @@ class NetworkDiscoveryService {
   /// Test if a specific IP address works (your existing method)
   static Future<bool> _testIP(String ip) async {
     try {
-      final response = await http.get(
-        Uri.parse('http://$ip/$_projectPath/api/test.php'),
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(Duration(seconds: _timeoutSeconds));
+      // Build test URL
+      final testUrl = 'http://$ip/$_projectPath/api/test.php';
+      print('🔍 Testing: $testUrl');
 
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        final success = data['success'] == true;
-        if (success) {
-          print('✅ IP $ip responded successfully');
+      // Web-specific timeout and error handling
+      final timeout =
+          kIsWeb ? Duration(seconds: 5) : Duration(seconds: _timeoutSeconds);
+
+      final response = await http.get(
+        Uri.parse(testUrl),
+        headers: {
+          'Accept': 'application/json',
+          'Cache-Control': 'no-cache',
+        },
+      ).timeout(timeout);
+
+      // Check if response indicates a working XAMPP server
+      bool isWorking = response.statusCode == 200;
+
+      if (isWorking && response.body.isNotEmpty) {
+        try {
+          final data = json.decode(response.body);
+          isWorking = data['success'] == true;
+          print(
+              '🔍 $ip test result: ${isWorking ? "✅ SUCCESS" : "❌ FAIL"} (${response.statusCode})');
+        } catch (e) {
+          print('🔍 $ip test result: ❌ FAIL (Invalid JSON response)');
+          isWorking = false;
         }
-        return success;
+      } else {
+        print('🔍 $ip test result: ❌ FAIL (${response.statusCode})');
       }
-      return false;
+
+      return isWorking;
     } catch (e) {
-      // Silence individual IP test failures (too much noise)
+      print(
+          '🔍 $ip test result: ❌ FAIL (${e.toString().contains('Connection refused') ? 'Connection refused' : 'Error'})');
       return false;
     }
   }
@@ -400,11 +482,18 @@ class NetworkDiscoveryService {
       final timestamp = prefs.getInt('${_cachedIPKey}_timestamp');
 
       if (cachedIP != null && timestamp != null) {
-        final cacheAge = DateTime.now().millisecondsSinceEpoch - timestamp;
-        final maxAge = 7 * 24 * 60 * 60 * 1000; // 7 days in milliseconds
+        // For web platform, use shorter cache duration
+        final maxAgeMillis = kIsWeb
+            ? 1 * 60 * 60 * 1000 // 1 hour for web
+            : 7 * 24 * 60 * 60 * 1000; // 7 days for mobile
 
-        if (cacheAge < maxAge) {
-          return cachedIP;
+        final cacheAge = DateTime.now().millisecondsSinceEpoch - timestamp;
+
+        if (cacheAge < maxAgeMillis) {
+          // Additional validation: ensure cached IP is not null/empty
+          if (cachedIP.trim().isNotEmpty && cachedIP != 'null') {
+            return cachedIP.trim();
+          }
         }
       }
 

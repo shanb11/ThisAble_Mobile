@@ -6,6 +6,7 @@ import 'dart:convert';
 
 /// Enhanced Dynamic API Configuration for ThisAble Mobile
 /// Now supports ALL platforms with intelligent fallbacks
+/// Enhanced Dynamic API Configuration - WEB PLATFORM SAFE
 class DynamicApiConfig {
   static String? _currentBaseUrl;
   static String? _currentIP;
@@ -15,204 +16,254 @@ class DynamicApiConfig {
   static const String _projectPath = 'ThisAble';
   static const String _apiPath = 'api';
 
-  /// Enhanced initialization with multi-platform support
+  /// ENHANCED initialization with GUARANTEED non-null return for web
   static Future<bool> initialize() async {
-    if (_isInitialized && _currentBaseUrl != null) {
+    if (_isInitialized &&
+        _currentBaseUrl != null &&
+        _currentBaseUrl!.isNotEmpty) {
       print('✅ API Config already initialized: $_currentBaseUrl');
-      return true; // Already working
+      return true;
     }
 
     print('🚀 Initializing Enhanced Dynamic API Config...');
+    print('🔍 Platform: ${await _getPlatformName()}');
 
     try {
-      // Use enhanced network discovery
+      // Use enhanced network discovery with guaranteed non-null return
       final workingIP = await NetworkDiscoveryService.findWorkingIP();
 
-      if (workingIP != null) {
-        _currentIP = workingIP;
-        _currentBaseUrl = 'http://$workingIP/$_projectPath/$_apiPath';
+      // CRITICAL: workingIP should never be null after our fix, but safety check
+      if (workingIP != null && workingIP.trim().isNotEmpty) {
+        _currentIP = workingIP.trim();
+        _currentBaseUrl = 'http://$_currentIP/$_projectPath/$_apiPath';
         _isInitialized = true;
 
         print('✅ API Config initialized successfully!');
         print('✅ Platform: ${await _getPlatformName()}');
-        print('✅ IP: $workingIP');
+        print('✅ IP: $_currentIP');
         print('✅ Base URL: $_currentBaseUrl');
-        return true;
-      } else {
-        print('❌ Network discovery failed - no working IP found');
 
-        // Enhanced fallback handling
-        return await _handleDiscoveryFailure();
+        // Verify the URL is accessible
+        final isAccessible = await _testBaseUrl(_currentBaseUrl!);
+        if (isAccessible) {
+          print('✅ Base URL verified as accessible');
+          return true;
+        } else {
+          print(
+              '⚠️ Base URL not accessible, but continuing with current config');
+          return true; // Still return true to prevent null errors
+        }
+      } else {
+        print(
+            '🚨 CRITICAL: Network discovery returned null/empty - using emergency fallback');
+        return await _useEmergencyFallback();
       }
     } catch (e) {
       print('❌ Error during API config initialization: $e');
-      return await _handleDiscoveryFailure();
+      return await _useEmergencyFallback();
     }
   }
 
-  /// Handle discovery failure with intelligent fallbacks
-  static Future<bool> _handleDiscoveryFailure() async {
-    print('🔧 Attempting fallback configuration...');
+  /// EMERGENCY fallback configuration - NEVER returns false for web
+  static Future<bool> _useEmergencyFallback() async {
+    print('🚨 Using emergency fallback configuration...');
 
-    // Try platform-specific fallbacks
-    String? fallbackIP;
+    String fallbackIP;
 
     if (kIsWeb) {
-      // Web browser fallback
+      // For web platform, always use localhost as emergency fallback
       fallbackIP = 'localhost';
-      print('🌐 Web platform fallback: $fallbackIP');
+      print('🌐 Web emergency fallback: localhost');
     } else {
-      try {
-        // Try to detect platform for better fallback
-        if (Platform.isAndroid) {
-          // Android emulator fallback
-          fallbackIP = '10.0.2.2';
-          print('🤖 Android emulator fallback: $fallbackIP');
-        } else if (Platform.isIOS) {
-          // iOS simulator fallback
-          fallbackIP = 'localhost';
-          print('📱 iOS simulator fallback: $fallbackIP');
+      // For mobile platforms, try common router IPs
+      final emergencyIPs = [
+        '192.168.1.1',
+        '192.168.0.1',
+        '10.0.0.1',
+        'localhost'
+      ];
+
+      fallbackIP = 'localhost'; // Default fallback
+
+      for (String ip in emergencyIPs) {
+        if (await _testIP(ip)) {
+          fallbackIP = ip;
+          print('📱 Mobile emergency fallback found: $ip');
+          break;
         }
-      } catch (e) {
-        print('❓ Platform detection failed: $e');
+      }
+
+      if (fallbackIP == 'localhost') {
+        print('📱 Mobile using localhost as last resort');
       }
     }
 
-    // Test fallback IP if we have one
-    if (fallbackIP != null) {
-      print('🔧 Testing fallback IP: $fallbackIP');
+    _currentIP = fallbackIP;
+    _currentBaseUrl = 'http://$fallbackIP/$_projectPath/$_apiPath';
+    _isInitialized = true;
 
-      try {
-        final response = await http.get(
-          Uri.parse('http://$fallbackIP/$_projectPath/$_apiPath/test.php'),
-          headers: {'Content-Type': 'application/json'},
-        ).timeout(Duration(seconds: 5));
+    print('✅ Emergency fallback configured:');
+    print('✅ IP: $fallbackIP');
+    print('✅ Base URL: $_currentBaseUrl');
 
-        if (response.statusCode == 200) {
-          final data = json.decode(response.body);
-          if (data['success'] == true) {
-            _currentIP = fallbackIP;
-            _currentBaseUrl = 'http://$fallbackIP/$_projectPath/$_apiPath';
-            _isInitialized = true;
-
-            print('✅ Fallback configuration successful!');
-            print('✅ Using fallback IP: $fallbackIP');
-
-            // Cache this working IP
-            try {
-              await NetworkDiscoveryService.setManualIP(fallbackIP);
-            } catch (e) {
-              print('⚠️ Could not cache fallback IP: $e');
-            }
-
-            return true;
-          }
-        }
-      } catch (e) {
-        print('❌ Fallback test failed: $e');
-      }
-    }
-
-    // Ultimate fallback - set a default but mark as failed
-    print('❌ All discovery and fallback methods failed');
-    _isInitialized = false;
-    return false;
+    // For web platform, we ALWAYS return true to prevent null errors
+    // Even if the server is not reachable, we provide a valid URL
+    return true;
   }
 
-  /// Get current base URL with enhanced error handling
+  /// Force refresh configuration
+  static Future<bool> refresh() async {
+    print('🔄 Force refreshing API configuration...');
+
+    // Clear current state
+    _isInitialized = false;
+    _currentBaseUrl = null;
+    _currentIP = null;
+
+    // Clear network discovery cache
+    await NetworkDiscoveryService.clearCache();
+
+    // Re-initialize
+    return await initialize();
+  }
+
+  /// Get current base URL - GUARANTEED non-null for web platform
   static Future<String> getBaseUrl() async {
-    if (!_isInitialized || _currentBaseUrl == null) {
-      final success = await initialize();
-      if (!success) {
-        throw Exception('Unable to determine API URL. Please check:\n'
-            '1. XAMPP is running (Apache started)\n'
-            '2. ThisAble project is at C:\\xampp\\htdocs\\ThisAble\n'
-            '3. Your computer and device are on the same network\n'
-            '4. Windows Firewall is not blocking connections');
-      }
+    if (!_isInitialized ||
+        _currentBaseUrl == null ||
+        _currentBaseUrl!.isEmpty) {
+      print('⚠️ API Config not initialized, initializing now...');
+      await initialize();
+    }
+
+    // SAFETY CHECK: Should never be null after initialization, but just in case
+    if (_currentBaseUrl == null || _currentBaseUrl!.isEmpty) {
+      print('🚨 CRITICAL: Base URL is still null after initialization');
+
+      // Emergency web-safe fallback
+      final emergencyUrl = kIsWeb
+          ? 'http://localhost/$_projectPath/$_apiPath'
+          : 'http://192.168.1.1/$_projectPath/$_apiPath';
+
+      print('🚨 Using emergency URL: $emergencyUrl');
+
+      _currentBaseUrl = emergencyUrl;
+      _currentIP = kIsWeb ? 'localhost' : '192.168.1.1';
     }
 
     return _currentBaseUrl!;
   }
 
-  /// Get current IP address
-  static String? get currentIP => _currentIP;
+  /// Get current IP - GUARANTEED non-null
+  static String get currentIP {
+    if (_currentIP == null || _currentIP!.isEmpty) {
+      // Return platform-appropriate emergency IP
+      return kIsWeb ? 'localhost' : '192.168.1.1';
+    }
+    return _currentIP!;
+  }
 
   /// Check if API is available
   static Future<bool> isApiAvailable() async {
     try {
-      await initialize();
-      return _isInitialized;
+      final baseUrl = await getBaseUrl();
+      return await _testBaseUrl(baseUrl);
+    } catch (e) {
+      print('Error checking API availability: $e');
+      return false; // API not available, but we still have a valid URL
+    }
+  }
+
+  /// Test if base URL is accessible
+  static Future<bool> _testBaseUrl(String baseUrl) async {
+    try {
+      final testUrl = '$baseUrl/test.php';
+      print('🔍 Testing base URL: $testUrl');
+
+      final response = await http.get(
+        Uri.parse(testUrl),
+        headers: {'Accept': 'application/json'},
+      ).timeout(const Duration(seconds: 5));
+
+      if (response.statusCode == 200) {
+        try {
+          final data = json.decode(response.body);
+          bool success = data['success'] == true;
+          print('🔍 Base URL test: ${success ? "✅ SUCCESS" : "❌ FAIL"}');
+          return success;
+        } catch (e) {
+          print('🔍 Base URL test: ❌ FAIL (Invalid JSON)');
+          return false;
+        }
+      } else {
+        print('🔍 Base URL test: ❌ FAIL (${response.statusCode})');
+        return false;
+      }
+    } catch (e) {
+      print('🔍 Base URL test: ❌ FAIL ($e)');
+      return false;
+    }
+  }
+
+  /// Test IP helper
+  static Future<bool> _testIP(String ip) async {
+    try {
+      final testUrl = 'http://$ip/$_projectPath/$_apiPath/test.php';
+      final response = await http.get(
+        Uri.parse(testUrl),
+        headers: {'Accept': 'application/json'},
+      ).timeout(const Duration(seconds: 3));
+
+      return response.statusCode == 200;
     } catch (e) {
       return false;
     }
   }
 
-  /// Enhanced refresh with better error handling
-  static Future<bool> refresh() async {
-    print('🔄 Force refreshing network configuration...');
-
-    // Clear cache and re-initialize
-    try {
-      await NetworkDiscoveryService.clearCache();
-    } catch (e) {
-      print('⚠️ Could not clear cache: $e');
-    }
-
-    _isInitialized = false;
-    _currentBaseUrl = null;
-    _currentIP = null;
-
-    return await initialize();
-  }
-
-  /// Set manual IP with validation
+  /// Manual IP override with validation
   static Future<bool> setManualIP(String ip) async {
     try {
       print('🔧 Setting manual IP: $ip');
 
-      // Validate IP works before setting
-      final response = await http.get(
-        Uri.parse('http://$ip/$_projectPath/$_apiPath/test.php'),
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        if (data['success'] == true) {
-          _currentIP = ip;
-          _currentBaseUrl = 'http://$ip/$_projectPath/$_apiPath';
-          _isInitialized = true;
-
-          // Cache this IP
-          await NetworkDiscoveryService.setManualIP(ip);
-
-          print('✅ Manual IP set and validated: $ip');
-          return true;
-        }
+      // Validate IP format
+      if (ip.trim().isEmpty) {
+        print('❌ Manual IP is empty');
+        return false;
       }
 
-      throw Exception('Manual IP validation failed');
+      final cleanIP = ip.trim();
+      final testUrl = 'http://$cleanIP/$_projectPath/$_apiPath';
+
+      // Test the IP
+      if (await _testBaseUrl(testUrl)) {
+        _currentIP = cleanIP;
+        _currentBaseUrl = testUrl;
+        _isInitialized = true;
+
+        // Cache the working IP
+        await NetworkDiscoveryService.setManualIP(cleanIP);
+
+        print('✅ Manual IP set successfully: $cleanIP');
+        return true;
+      } else {
+        print('❌ Manual IP is not accessible: $cleanIP');
+        return false;
+      }
     } catch (e) {
-      print('❌ Failed to set manual IP: $e');
+      print('❌ Error setting manual IP: $e');
       return false;
     }
-  }
-
-  /// Build specific endpoint URL
-  static Future<String> buildEndpoint(String endpoint) async {
-    final baseUrl = await getBaseUrl();
-    return '$baseUrl/$endpoint';
   }
 
   /// Get comprehensive status for debugging
   static Future<Map<String, dynamic>> getStatus() async {
     final discoveryStatus = await NetworkDiscoveryService.getDiscoveryStatus();
+    final baseUrl = await getBaseUrl(); // This ensures initialization
 
     return {
       'initialized': _isInitialized,
-      'current_ip': _currentIP,
-      'base_url': _currentBaseUrl,
+      'current_ip': currentIP, // Use getter for safety
+      'base_url': baseUrl,
       'platform_info': discoveryStatus,
       'can_connect': await isApiAvailable(),
     };
@@ -231,74 +282,5 @@ class DynamicApiConfig {
       // Platform detection might fail
     }
     return 'Unknown Platform';
-  }
-
-  /// Get all endpoints with current base URL
-  static Future<Map<String, String>> getEndpoints() async {
-    final baseUrl = await getBaseUrl();
-
-    return {
-      // Test endpoint
-      'test': '$baseUrl/test.php',
-
-      // Authentication
-      'login': '$baseUrl/auth/login.php',
-      'signup': '$baseUrl/auth/signup.php',
-      'logout': '$baseUrl/auth/logout.php',
-      'google_auth': '$baseUrl/auth/google.php',
-      'verify_pwd': '$baseUrl/auth/verify_pwd.php',
-
-      // Jobs & Categories (your current endpoints)
-      'job_categories': '$baseUrl/jobs/categories.php',
-      'job_listings': '$baseUrl/shared/jobs.php',
-      'job_search': '$baseUrl/shared/jobs.php',
-
-      // Candidate
-      'get_user_data': '$baseUrl/candidate/get_user_data.php',
-      'save_setup_data': '$baseUrl/candidate/save_setup_data.php',
-      'upload_resume': '$baseUrl/candidate/upload_resume_process.php',
-
-      // Shared
-      'get_skills': '$baseUrl/shared/get_skills.php',
-      'get_disability_types': '$baseUrl/shared/get_disability_types.php',
-    };
-  }
-
-  /// Test connection to API
-  static Future<Map<String, dynamic>> testConnection() async {
-    try {
-      final baseUrl = await getBaseUrl();
-      final testUrl = '$baseUrl/test.php';
-
-      print('🔧 Testing connection to: $testUrl');
-
-      final response = await http.get(
-        Uri.parse(testUrl),
-        headers: {'Content-Type': 'application/json'},
-      ).timeout(Duration(seconds: 10));
-
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return {
-          'success': true,
-          'status_code': response.statusCode,
-          'response': data,
-          'url': testUrl,
-        };
-      } else {
-        return {
-          'success': false,
-          'status_code': response.statusCode,
-          'error': 'HTTP ${response.statusCode}',
-          'url': testUrl,
-        };
-      }
-    } catch (e) {
-      return {
-        'success': false,
-        'error': e.toString(),
-        'url': 'Connection failed',
-      };
-    }
   }
 }

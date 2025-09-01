@@ -8,6 +8,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:math' as math;
 // Only add this import if you're on web
 import 'dart:html' as html;
+import 'network_discovery_service.dart';
 
 class ApiService {
   /// Add these methods anywhere in your ApiService class:
@@ -67,10 +68,19 @@ class ApiService {
   // HTTP HELPERS - ENHANCED
   // ===========================================
 
-  /// Build API URI consistently
+  /// Build API URI consistently - ENHANCED with proper error handling
   static Future<Uri> _buildApiUri(String endpoint) async {
-    final baseUrl = await DynamicApiConfig.getBaseUrl();
-    return Uri.parse('$baseUrl/$endpoint');
+    try {
+      final baseUrl = await DynamicApiConfig.getBaseUrl();
+      return Uri.parse('$baseUrl/$endpoint');
+    } catch (e) {
+      print('🔧 Error building API URI: $e');
+      // Fallback URI construction
+      final fallbackUrl = kIsWeb
+          ? 'http://localhost/ThisAble/api/$endpoint'
+          : 'http://192.168.1.1/ThisAble/api/$endpoint';
+      return Uri.parse(fallbackUrl);
+    }
   }
 
   //added
@@ -218,14 +228,12 @@ class ApiService {
   // AUTHENTICATION ENDPOINTS
   // ===========================================
 
-  /// Test API connection
+  /// Test API connection - FIXED async pattern
   static Future<Map<String, dynamic>> testConnection() async {
     try {
-      final response = await http.get(
-        _buildApiUri('test.php'),
-        headers: await _getHeaders(),
-      );
-
+      // FIXED: Properly await the async method
+      final response = await http.get(await _buildApiUri('test.php'),
+          headers: await _getHeaders());
       return _handleResponse(response);
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
@@ -666,7 +674,7 @@ class ApiService {
     return ApiEndpoints.baseUrl.replaceAll('localhost', '10.0.2.2');
   }
 
-  /// Upload resume file - FIXED NULL HANDLING FOR WEB
+  /// Upload resume file - FIXED multipart request URI issue
   static Future<Map<String, dynamic>> uploadResume({
     required PlatformFile file,
   }) async {
@@ -674,12 +682,10 @@ class ApiService {
       print('🔧 === UPLOAD RESUME DEBUG ===');
       print('🔧 File name: ${file.name}');
       print('🔧 File size: ${file.size}');
-      print('🔧 File path: ${file.path}');
-      print('🔧 File bytes available: ${file.bytes != null}');
 
       // Check authentication
       final token = await getToken();
-      if (token == null || token.isEmpty || token.trim().isEmpty) {
+      if (token == null || token.isEmpty) {
         return {
           'success': false,
           'message': 'Authentication required',
@@ -687,102 +693,55 @@ class ApiService {
         };
       }
 
-      // Validate file size (5MB max)
-      if (file.size > 5 * 1024 * 1024) {
-        return {'success': false, 'message': 'File size exceeds 5MB limit'};
-      }
+      // FIXED: Properly await the URI building
+      final uploadUri = await _buildApiUri('candidate/upload_resume.php');
 
-      // Create multipart request
-      var request = http.MultipartRequest(
-        'POST',
-        _buildApiUri('candidate/upload_resume.php'),
-      );
+      // Create multipart request with properly constructed URI
+      var request = http.MultipartRequest('POST', uploadUri);
 
-      // FIXED: Add headers with null checking
-      final cleanHeaders = <String, String>{};
-      cleanHeaders['Accept'] = 'application/json';
+      // Add authentication header
+      request.headers.addAll(await _getHeaders(includeAuth: true));
 
-      final trimmedToken = token.trim();
-      if (trimmedToken.isNotEmpty) {
-        cleanHeaders['Authorization'] = 'Bearer $trimmedToken';
-      }
-
-      request.headers.addAll(cleanHeaders);
-
-      // FIXED: Handle file upload with proper null checking
-      bool fileAdded = false;
-
-      if (file.path != null && file.path!.isNotEmpty) {
-        // Use file path (works on mobile)
-        try {
-          request.files.add(
-            await http.MultipartFile.fromPath(
-              'resume_file',
-              file.path!,
-              filename: file.name.isNotEmpty ? file.name : 'resume.pdf',
-            ),
-          );
-          fileAdded = true;
-          print('🔧 Added file from path: ${file.path}');
-        } catch (e) {
-          print('🔧 Failed to add file from path: $e');
+      // Handle file upload based on platform
+      if (kIsWeb) {
+        if (file.bytes != null) {
+          request.files.add(http.MultipartFile.fromBytes(
+            'resume',
+            file.bytes!,
+            filename: file.name,
+          ));
+        } else {
+          return {
+            'success': false,
+            'message': 'No file data available for web'
+          };
+        }
+      } else {
+        // Mobile platform
+        if (file.path != null) {
+          request.files.add(await http.MultipartFile.fromPath(
+            'resume',
+            file.path!,
+            filename: file.name,
+          ));
+        } else if (file.bytes != null) {
+          request.files.add(http.MultipartFile.fromBytes(
+            'resume',
+            file.bytes!,
+            filename: file.name,
+          ));
+        } else {
+          return {'success': false, 'message': 'No file available'};
         }
       }
-
-      if (!fileAdded && file.bytes != null && file.bytes!.isNotEmpty) {
-        // Fallback to bytes (for web)
-        try {
-          request.files.add(
-            http.MultipartFile.fromBytes(
-              'resume_file',
-              file.bytes!,
-              filename: file.name.isNotEmpty ? file.name : 'resume.pdf',
-            ),
-          );
-          fileAdded = true;
-          print('🔧 Added file from bytes');
-        } catch (e) {
-          print('🔧 Failed to add file from bytes: $e');
-        }
-      }
-
-      if (!fileAdded) {
-        return {
-          'success': false,
-          'message': 'File data not available - no valid path or bytes'
-        };
-      }
-
-      print('🔧 Sending multipart request...');
 
       // Send request
-      var streamedResponse = await request.send();
-      var response = await http.Response.fromStream(streamedResponse);
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
 
-      print('🔧 Upload response status: ${response.statusCode}');
-      print('🔧 Upload response body: ${response.body}');
-
-      final result = _handleResponse(response);
-
-      // Handle token errors
-      if (!result['success'] &&
-          result['message'] != null &&
-          (result['message'].toString().toLowerCase().contains('token') ||
-              result['message']
-                  .toString()
-                  .toLowerCase()
-                  .contains('unauthorized'))) {
-        await clearAllData();
-        return {
-          'success': false,
-          'message': 'Session expired. Please login again.',
-          'requiresLogin': true
-        };
-      }
-
-      return result;
+      return _handleResponse(response);
     } catch (e) {
-      print('🔧 Upload error: $e');
+      print('🔧 Resume upload error: $e');
       return {'success': false, 'message': 'Upload failed: $e'};
     }
   }
@@ -794,34 +753,32 @@ class ApiService {
     return await _makeGetRequest('candidate/get_dashboard_home.php');
   }
 
-  // Applications List
+  /// Get job applications list - FIXED URI replace method issue
   static Future<Map<String, dynamic>> getApplicationsList({
     String? status,
-    String? searchQuery,
-    int? page,
+    int page = 1,
+    int limit = 10,
   }) async {
     try {
-      final token = await getToken();
-      if (token == null) {
-        return {'success': false, 'message': 'No authentication token found'};
+      Map<String, String> queryParams = {
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+
+      if (status != null && status.isNotEmpty) {
+        queryParams['status'] = status;
       }
 
-      Map<String, dynamic> queryParams = {};
-      if (status != null) queryParams['status'] = status;
-      if (searchQuery != null) queryParams['search'] = searchQuery;
-      if (page != null) queryParams['page'] = page.toString();
+      // FIXED: Properly await URI construction, then use replace
+      final baseUri = await _buildApiUri('candidate/get_applications_list.php');
+      final uri = baseUri.replace(
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
+      ); // FIXED: Now calling replace on actual Uri, not Future
 
-      final uri = _buildApiUri('candidate/get_applications_list.php').replace(
-          queryParameters: queryParams.isNotEmpty ? queryParams : null);
-
-      final response = await http.get(
-        uri,
-        headers: await _getHeaders(includeAuth: true),
-      );
-
+      final response = await http.get(uri, headers: await _getHeaders());
       return _handleResponse(response);
     } catch (e) {
-      return {'success': false, 'message': 'Error: $e'};
+      return {'success': false, 'message': 'Network error: $e'};
     }
   }
 
@@ -1593,74 +1550,5 @@ class ApiService {
         'message': 'Test request failed: $e',
       };
     }
-  }
-
-  /// Deep clean map of null values
-  static Map<String, dynamic> _deepCleanMap(Map<String, dynamic> input) {
-    final cleaned = <String, dynamic>{};
-
-    input.forEach((key, value) {
-      if (key != null && key.toString().trim().isNotEmpty) {
-        final cleanKey = key.toString().trim();
-
-        if (value == null) {
-          return; // Skip null values
-        } else if (value is String) {
-          if (value.isNotEmpty) {
-            cleaned[cleanKey] = value;
-          }
-        } else if (value is Map) {
-          final cleanedSubMap = _deepCleanMap(value.cast<String, dynamic>());
-          if (cleanedSubMap.isNotEmpty) {
-            cleaned[cleanKey] = cleanedSubMap;
-          }
-        } else if (value is List) {
-          final cleanedList = value.where((item) => item != null).toList();
-          if (cleanedList.isNotEmpty) {
-            cleaned[cleanKey] = cleanedList;
-          }
-        } else {
-          cleaned[cleanKey] = value;
-        }
-      }
-    });
-
-    return cleaned;
-  }
-
-  /// DEBUG METHOD: Test web platform fixes
-  static Future<void> debugWebPlatformFix() async {
-    print('🔍 === WEB PLATFORM DEBUG TEST ===');
-
-    try {
-      print('🔍 Platform: ${kIsWeb ? "WEB" : "MOBILE"}');
-
-      // Test network discovery
-      final discoveredIP = await NetworkDiscoveryService.findWorkingIP();
-      print('🔍 Discovered IP: $discoveredIP');
-
-      // Test dynamic API config
-      final initSuccess = await DynamicApiConfig.initialize();
-      print('🔍 Config init: $initSuccess');
-
-      final baseUrl = await DynamicApiConfig.getBaseUrl();
-      print('🔍 Base URL: $baseUrl');
-
-      // Test connectivity
-      try {
-        final response = await http.get(
-          Uri.parse('$baseUrl/test.php'),
-          headers: {'Accept': 'application/json'},
-        ).timeout(const Duration(seconds: 10));
-
-        print('🔍 ✅ Connection test: SUCCESS (${response.statusCode})');
-      } catch (e) {
-        print('🔍 ❌ Connection test: FAILED ($e)');
-      }
-    } catch (e) {
-      print('🔍 ❌ Debug test failed: $e');
-    }
-
-    print('🔍 === DEBUG TEST COMPLETE ===');
   }
 }

@@ -8,7 +8,7 @@ void main() async {
 
   print('🚀 Starting ThisAble Mobile...');
 
-  // FORCE REFRESH instead of initialize para ma-clear yung cached wrong IP
+  // ✅ ENHANCED: Use refresh() instead of initialize() to clear any cached wrong IPs
   print('🔄 Force refreshing network configuration...');
   final apiReady = await DynamicApiConfig.refresh();
 

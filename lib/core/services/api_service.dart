@@ -230,7 +230,7 @@ class ApiService {
     }
   }
 
-  /// COMPLETELY REWRITTEN Google Sign-In method - NULL-PROOF
+  /// FIXED: Google Sign-In with proper async/await handling
   static Future<Map<String, dynamic>> googleSignIn({
     required String idToken,
     String? accessToken,
@@ -277,9 +277,8 @@ class ApiService {
 
       print('🔧 Request body keys: ${requestBody.keys.toList()}');
 
-      // Get dynamic base URL
-      final baseUrl = await DynamicApiConfig.getBaseUrl();
-      final googleAuthUrl = '$baseUrl/auth/google.php';
+      // ✅ CRITICAL FIX: Properly await the ApiEndpoints method
+      final googleAuthUrl = await ApiEndpoints.googleAuth;
 
       final response = await http.post(
         Uri.parse(googleAuthUrl),
@@ -1379,7 +1378,7 @@ class ApiService {
       print('🔧 Request body: ${requestBody.keys}');
 
       // Get guaranteed non-null URL
-      final url = ApiEndpoints.googleAuth;
+      final url = await ApiEndpoints.googleAuth;
       print('🔧 Using URL: $url');
 
       // Make safe request

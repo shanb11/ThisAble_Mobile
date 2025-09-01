@@ -20,7 +20,7 @@ class DynamicApiConfig {
   // CORE INITIALIZATION METHODS
   // ===========================================
 
-  /// Enhanced initialization with GUARANTEED non-null return
+  /// Enhanced initialization with WEB EMULATOR SUPPORT
   static Future<bool> initialize() async {
     if (_isInitialized &&
         _currentBaseUrl != null &&
@@ -33,8 +33,16 @@ class DynamicApiConfig {
     print('🔍 Platform: ${await _getPlatformName()}');
 
     try {
-      // Use your enhanced network discovery with guaranteed non-null return
-      final workingIP = await NetworkDiscoveryService.findWorkingIP();
+      String? workingIP;
+
+      // ✅ NEW: Different strategies for web vs mobile
+      if (kIsWeb) {
+        print('🌐 Web platform detected - trying localhost first...');
+        workingIP = await _findWebWorkingIP();
+      } else {
+        print('📱 Mobile platform detected - using network discovery...');
+        workingIP = await NetworkDiscoveryService.findWorkingIP();
+      }
 
       // CRITICAL: workingIP should never be null after your fix, but safety check
       if (workingIP != null && workingIP.trim().isNotEmpty) {
@@ -64,6 +72,56 @@ class DynamicApiConfig {
       print('❌ API Config initialization error: $e');
       _setEmergencyFallback();
       return true; // Return true to prevent app from crashing
+    }
+  }
+
+  /// NEW: Web-specific IP discovery with localhost fallback
+  static Future<String?> _findWebWorkingIP() async {
+    // List of IPs to try for web emulator (prioritizing localhost)
+    final webIPsToTry = [
+      'localhost', // Primary for web emulator
+      '127.0.0.1', // Localhost IP
+      '10.0.2.2', // Android emulator host
+      '192.168.1.1', // Common router IP
+      '192.168.0.1', // Alternative router IP
+    ];
+
+    print('🔍 Testing web-specific IPs...');
+
+    for (final ip in webIPsToTry) {
+      print('🔍 Testing web IP: $ip');
+
+      try {
+        final testUrl = 'http://$ip/$_projectPath/$_apiPath/test.php';
+
+        // Web-specific timeout (shorter for localhost)
+        final timeout = ip == 'localhost' || ip == '127.0.0.1'
+            ? Duration(seconds: 2)
+            : Duration(seconds: 1);
+
+        final response = await http.get(
+          Uri.parse(testUrl),
+          headers: {'Accept': 'application/json'},
+        ).timeout(timeout);
+
+        if (response.statusCode == 200) {
+          print('✅ Web IP working: $ip');
+          return ip;
+        }
+      } catch (e) {
+        print('❌ Web IP failed: $ip ($e)');
+        continue;
+      }
+    }
+
+    print('⚠️ No web IPs working, falling back to NetworkDiscoveryService...');
+
+    // Fallback to your existing NetworkDiscoveryService
+    try {
+      return await NetworkDiscoveryService.findWorkingIP();
+    } catch (e) {
+      print('❌ NetworkDiscoveryService also failed: $e');
+      return null;
     }
   }
 
@@ -137,20 +195,20 @@ class DynamicApiConfig {
   // UTILITY METHODS
   // ===========================================
 
-  /// Set emergency fallback configuration
+  /// Set emergency fallback URL (keeps your existing pattern)
   static void _setEmergencyFallback() {
-    final emergencyIP = kIsWeb ? 'localhost' : '192.168.1.1';
-    final emergencyUrl = kIsWeb
-        ? 'http://localhost/$_projectPath/$_apiPath'
-        : 'http://192.168.1.1/$_projectPath/$_apiPath';
+    print('🚨 Setting emergency fallback configuration');
 
-    _currentIP = emergencyIP;
-    _currentBaseUrl = emergencyUrl;
+    if (kIsWeb) {
+      _currentIP = 'localhost';
+      _currentBaseUrl = 'http://localhost/$_projectPath/$_apiPath';
+    } else {
+      _currentIP = '192.168.1.1';
+      _currentBaseUrl = 'http://192.168.1.1/$_projectPath/$_apiPath';
+    }
+
     _isInitialized = true;
-
-    print('🚨 Using emergency fallback configuration');
-    print('🚨 Emergency IP: $emergencyIP');
-    print('🚨 Emergency URL: $emergencyUrl');
+    print('🚨 Emergency fallback set: $_currentBaseUrl');
   }
 
   /// Check if API is available

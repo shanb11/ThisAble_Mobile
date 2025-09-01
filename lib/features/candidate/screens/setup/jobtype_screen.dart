@@ -79,9 +79,7 @@ class _JobtypeScreenState extends State<JobtypeScreen> {
       );
 
       // Save job type to database
-      final response = await ApiService.saveSetupData(
-        jobType: _selectedJobtype,
-      );
+      final response = await ApiService.saveJobType(_selectedJobtype!);
 
       // Hide loading
       Navigator.pop(context);

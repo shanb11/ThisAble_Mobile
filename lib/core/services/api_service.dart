@@ -129,6 +129,29 @@ class ApiService {
     }
   }
 
+  /// MISSING METHOD: Build API URI with proper async handling
+  static Future<Uri> _buildApiUri(String endpoint) async {
+    final baseUrl = await DynamicApiConfig.getBaseUrl();
+    final fullUrl = '$baseUrl/$endpoint';
+    return Uri.parse(fullUrl);
+  }
+
+  /// MISSING METHOD: Generic GET request method
+  static Future<Map<String, dynamic>> _makeGetRequest(String endpoint) async {
+    try {
+      final uri = await _buildApiUri(endpoint);
+
+      final response = await http.get(
+        uri,
+        headers: await _getHeaders(includeAuth: true),
+      );
+
+      return _handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
   /// Enhanced authenticated request handler - FIXED NULL HANDLING
   static Future<Map<String, dynamic>> _makeAuthenticatedRequest(
     String endpoint,
@@ -420,8 +443,9 @@ class ApiService {
   /// Get skill categories from database
   static Future<Map<String, dynamic>> getSkillCategories() async {
     try {
+      final url = await ApiEndpoints.getSkillCategories;
       final response = await http.get(
-        Uri.parse(ApiEndpoints.getSkillCategories),
+        Uri.parse(url),
         headers: await _getHeaders(),
       );
 
@@ -490,10 +514,10 @@ class ApiService {
     }
   }
 
-  /// Save job type (Step 4 of setup) - Enhanced version
+  /// Save job type (Step 4 of setup)
   static Future<Map<String, dynamic>> saveJobType(String jobType) async {
     try {
-      print('🔧 === SAVE JOB TYPE ENHANCED ===');
+      print('🔧 === SAVE JOB TYPE ===');
       print('🔧 Job type: $jobType');
 
       final requestBody = {'job_type': jobType};
@@ -611,8 +635,8 @@ class ApiService {
       }
       queryParams['page'] = page.toString();
 
-      final uri = Uri.parse(ApiEndpoints.searchJobs)
-          .replace(queryParameters: queryParams);
+      final baseUrl = await ApiEndpoints.searchJobs;
+      final uri = Uri.parse(baseUrl).replace(queryParameters: queryParams);
 
       final response = await http.get(
         uri,
@@ -1124,20 +1148,20 @@ class ApiService {
   }
 
   /// Add this debug method to your ApiService class
+  /// Debug method for Google Auth configuration
   static Future<void> debugGoogleAuthConfiguration() async {
     print('🔍 === ROOT CAUSE ANALYSIS START ===');
 
     try {
       // 1. Check all URL configurations
       print('🔍 STEP 1: URL Configuration Analysis');
-      print('🔍 AppConstants.baseUrl: "${AppConstants.baseUrl}"');
-      print(
-          '🔍 AppConstants.candidateGoogleAuth: "${AppConstants.candidateGoogleAuth}"');
-      print('🔍 ApiEndpoints.baseUrl: "${ApiEndpoints.baseUrl}"');
-      print('🔍 ApiEndpoints.googleAuth: "${ApiEndpoints.googleAuth}"');
+      final baseUrl = await DynamicApiConfig.getBaseUrl();
+      final googleAuthUrl = await ApiEndpoints.googleAuth;
+
+      print('🔍 DynamicApiConfig.getBaseUrl(): "$baseUrl"');
+      print('🔍 ApiEndpoints.googleAuth: "$googleAuthUrl"');
 
       // 2. Check if any URLs are null or contain null
-      final googleAuthUrl = ApiEndpoints.googleAuth;
       print('🔍 Final googleAuth URL: "$googleAuthUrl"');
       print('🔍 googleAuth URL is null: ${googleAuthUrl == null}');
       print(
@@ -1157,55 +1181,9 @@ class ApiService {
         print('🔍 ❌ URI parsing failed: $e');
       }
 
-      // 4. Check Dynamic API Config (if it exists)
+      // 4. Test basic connectivity
+      print('🔍 STEP 2: Network Connectivity Test');
       try {
-        final dynamicStatus = await DynamicApiConfig.getStatus();
-        print('🔍 STEP 2: Dynamic API Config Analysis');
-        print('🔍 Dynamic config: $dynamicStatus');
-      } catch (e) {
-        print('🔍 Dynamic API Config not available or errored: $e');
-      }
-
-      // 5. Test basic header creation
-      print('🔍 STEP 3: Headers Analysis');
-      try {
-        final headers = await _getHeaders();
-        print(
-            '🔍 Basic headers created successfully: ${headers.keys.toList()}');
-        headers.forEach((key, value) {
-          print('🔍   $key: "${value}" (null: ${value == null})');
-        });
-      } catch (e) {
-        print('🔍 ❌ Header creation failed: $e');
-      }
-
-      // 6. Test JSON encoding with minimal data
-      print('🔍 STEP 4: JSON Encoding Test');
-      try {
-        final testBody = {'action': 'login', 'test': 'value'};
-        final jsonString = json.encode(testBody);
-        print('🔍 JSON encoding successful: $jsonString');
-      } catch (e) {
-        print('🔍 ❌ JSON encoding failed: $e');
-      }
-
-      // 7. Check platform-specific issues
-      print('🔍 STEP 5: Platform Analysis');
-      print('🔍 Platform: ${kIsWeb ? "WEB" : "MOBILE"}');
-      if (kIsWeb) {
-        try {
-          print('🔍 Web user agent: ${html.window.navigator.userAgent}');
-          print('🔍 Web location: ${html.window.location.href}');
-          print('🔍 Web protocol: ${html.window.location.protocol}');
-        } catch (e) {
-          print('🔍 Web info gathering failed: $e');
-        }
-      }
-
-      // 8. Test basic network connectivity
-      print('🔍 STEP 6: Network Connectivity Test');
-      try {
-        // Test a simple GET to your test endpoint
         final testUrl = googleAuthUrl.replaceAll('google.php', 'test.php');
         print('🔍 Testing connectivity to: $testUrl');
 

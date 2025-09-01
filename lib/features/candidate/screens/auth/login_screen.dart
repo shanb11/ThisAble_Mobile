@@ -503,14 +503,14 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// Handle Google Sign-In with proper navigation - FIXED FOR WEB
+  /// FIXED Handle Google Sign-In - Now uses dynamic URL system
   void _handleGoogleSignIn() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      print('🔧 === STARTING GOOGLE SIGN-IN ===');
+      print('🔧 === STARTING FIXED GOOGLE SIGN-IN ===');
 
       final controller = GoogleSignInController.instance;
       await controller.initialize();
@@ -518,8 +518,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
       print('🔧 Google Sign-In Result: ${result.success}');
       print('🔧 Platform: ${result.platformUsed}');
-      print('🔧 Has Account: ${result.account != null}');
-      print('🔧 Has Auth: ${result.authentication != null}');
 
       if (result.success &&
           result.account != null &&
@@ -532,7 +530,7 @@ class _LoginScreenState extends State<LoginScreen> {
         print(
             '🔧 Access Token Available: ${accessToken != null && accessToken.isNotEmpty}');
 
-        // FIXED: Validate we have at least one valid token
+        // Validate we have at least one valid token
         final hasValidIdToken = idToken != null && idToken.trim().isNotEmpty;
         final hasValidAccessToken =
             accessToken != null && accessToken.trim().isNotEmpty;
@@ -542,27 +540,29 @@ class _LoginScreenState extends State<LoginScreen> {
               'No valid authentication tokens received from Google');
         }
 
-        // FIXED: Call API with proper token handling
-        print('🔧 Calling API with tokens...');
+        // ✅ FIXED: This now uses your dynamic URL system!
+        print('🔧 Calling API with dynamic URL...');
         final apiResult = await ApiService.googleSignInDebug(
           idToken: hasValidIdToken ? idToken! : '',
-          accessToken: hasValidAccessToken ? accessToken : null,
+          accessToken: hasValidAccessToken ? accessToken! : '',
         );
 
         print('🔧 API Result Success: ${apiResult['success']}');
 
-        if (apiResult['success']) {
-          // Handle successful login
-          final data = apiResult['data'];
-          final user = data['user'];
+        if (apiResult['success'] == false) {
+          print('🔧 API Error: ${apiResult['message']}');
+        }
 
-          print(
-              '🔧 Login successful for: ${user['first_name']} ${user['last_name']}');
+        setState(() {
+          _isLoading = false;
+        });
 
-          // Check if account setup is complete
-          final setupComplete = user['account_setup_completed'] == 1 ||
-              user['account_setup_completed'] == true ||
-              user['account_setup_completed'] == '1';
+        if (apiResult['success'] == true) {
+          final user = apiResult['user'];
+          final setupComplete = apiResult['setup_complete'] ?? false;
+
+          // Store user data
+          await ApiService.setCurrentUser(user);
 
           // Show welcome message
           if (mounted) {
@@ -570,76 +570,54 @@ class _LoginScreenState extends State<LoginScreen> {
               SnackBar(
                 content: Text('Welcome back, ${user['first_name']}!'),
                 backgroundColor: Colors.green,
-                duration: const Duration(seconds: 2),
               ),
             );
-          }
 
-          // Navigate based on setup completion
-          await Future.delayed(
-              const Duration(milliseconds: 500)); // Brief delay for UX
-
-          if (setupComplete) {
-            print('🔧 Navigating to dashboard...');
-            _navigateToDashboard();
-          } else {
-            print('🔧 Navigating to account setup...');
-            _navigateToAccountSetup();
+            // Navigate based on setup completion
+            if (setupComplete) {
+              _navigateToDashboard();
+            } else {
+              _navigateToAccountSetup();
+            }
           }
         } else {
-          // Handle API error
-          final errorMessage = apiResult['message'] ?? 'Authentication failed';
-          print('🔧 API Error: $errorMessage');
-
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(errorMessage),
+                content: Text(apiResult['message'] ?? 'Google Sign-In failed'),
                 backgroundColor: Colors.red,
-                duration: const Duration(seconds: 3),
               ),
             );
           }
         }
       } else {
-        // Handle sign-in failure
-        String errorMessage = 'Google Sign-In failed';
-
-        if (result.type == GoogleSignInControllerResultType.cancelled) {
-          errorMessage = 'Sign-in was cancelled';
-        } else if (result.error != null) {
-          errorMessage = result.error!;
-        }
-
-        print('🔧 Sign-in failed: $errorMessage');
+        setState(() {
+          _isLoading = false;
+        });
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(errorMessage),
+            const SnackBar(
+              content: Text('Google Sign-In was cancelled or failed'),
               backgroundColor: Colors.orange,
-              duration: const Duration(seconds: 2),
             ),
           );
         }
       }
     } catch (e) {
-      print('🔧 Google Sign-In Exception: $e');
+      setState(() {
+        _isLoading = false;
+      });
+
+      print('🔧 Google Sign-In Error: $e');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Sign-in error: ${e.toString()}'),
+            content: Text('Sign-in error: $e'),
             backgroundColor: Colors.red,
-            duration: const Duration(seconds: 3),
           ),
         );
-      }
-    } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
       }
     }
 

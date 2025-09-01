@@ -68,43 +68,6 @@ class ApiService {
   // HTTP HELPERS - ENHANCED
   // ===========================================
 
-  /// Build API URI consistently - ENHANCED with proper error handling
-  static Future<Uri> _buildApiUri(String endpoint) async {
-    try {
-      final baseUrl = await DynamicApiConfig.getBaseUrl();
-      return Uri.parse('$baseUrl/$endpoint');
-    } catch (e) {
-      print('🔧 Error building API URI: $e');
-      // Fallback URI construction
-      final fallbackUrl = kIsWeb
-          ? 'http://localhost/ThisAble/api/$endpoint'
-          : 'http://192.168.1.1/ThisAble/api/$endpoint';
-      return Uri.parse(fallbackUrl);
-    }
-  }
-
-  //added
-  static Future<Map<String, dynamic>> _makeGetRequest(String endpoint) async {
-    try {
-      final token = await getToken();
-      print('🔧 API Call: $endpoint');
-      print('🔧 Token: ${token?.substring(0, 20)}...');
-
-      final response = await http.get(
-        await _buildApiUri(endpoint), // FIXED: await the async method
-        headers: await _getHeaders(includeAuth: true),
-      );
-
-      print('🔧 Status Code: ${response.statusCode}');
-      print('🔧 Response Body: ${response.body}');
-
-      return _handleResponse(response);
-    } catch (e) {
-      print('🔧 API Error: $e');
-      return {'success': false, 'message': 'Error: $e'};
-    }
-  }
-
   /// Common headers for API requests - FIXED NULL HANDLING
   static Future<Map<String, String>> _getHeaders(
       {bool includeAuth = false}) async {
@@ -228,26 +191,32 @@ class ApiService {
   // AUTHENTICATION ENDPOINTS
   // ===========================================
 
-  /// Test API connection - FIXED async pattern
+  /// FIXED: Test connection - Now uses dynamic URL
   static Future<Map<String, dynamic>> testConnection() async {
     try {
-      // FIXED: Properly await the async method
-      final response = await http.get(await _buildApiUri('test.php'),
-          headers: await _getHeaders());
+      // ✅ FIXED: Use dynamic URL construction
+      final url = await ApiEndpoints.testConnection;
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {'Accept': 'application/json'},
+      );
+
       return _handleResponse(response);
     } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
+      return {'success': false, 'message': 'Connection test failed: $e'};
     }
   }
 
-  /// Login user with email and password
-  static Future<Map<String, dynamic>> login({
-    required String email,
-    required String password,
-  }) async {
+  /// FIXED: Regular login - Now uses dynamic URL
+  static Future<Map<String, dynamic>> login(
+      {required String email, required String password}) async {
     try {
+      // ✅ FIXED: Use dynamic URL construction
+      final url = await ApiEndpoints.login;
+
       final response = await http.post(
-        Uri.parse(ApiEndpoints.login),
+        Uri.parse(url),
         headers: await _getHeaders(),
         body: json.encode({
           'email': email,
@@ -255,20 +224,7 @@ class ApiService {
         }),
       );
 
-      final result = _handleResponse(response);
-
-      // Store token and user data if login successful
-      if (result['success'] && result['data'] != null) {
-        final data = result['data'];
-        if (data['token'] != null) {
-          await setToken(data['token']);
-        }
-        if (data['user'] != null) {
-          await setCurrentUser(data['user']);
-        }
-      }
-
-      return result;
+      return _handleResponse(response);
     } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
     }
@@ -445,11 +401,14 @@ class ApiService {
   // SHARED ENDPOINTS (for app data)
   // ===========================================
 
-  /// Get disability types from database
+  /// FIXED: Get disability types - Now uses dynamic URL
   static Future<Map<String, dynamic>> getDisabilityTypes() async {
     try {
+      // ✅ FIXED: Use dynamic URL construction
+      final url = await ApiEndpoints.getDisabilityTypes;
+
       final response = await http.get(
-        Uri.parse(ApiEndpoints.getDisabilityTypes),
+        Uri.parse(url),
         headers: await _getHeaders(),
       );
 
@@ -473,11 +432,14 @@ class ApiService {
     }
   }
 
-  /// Get skills from database
+  /// FIXED: Get skills - Now uses dynamic URL
   static Future<Map<String, dynamic>> getSkills() async {
     try {
+      // ✅ FIXED: Use dynamic URL construction
+      final url = await ApiEndpoints.getSkills;
+
       final response = await http.get(
-        Uri.parse(ApiEndpoints.getSkills),
+        Uri.parse(url),
         headers: await _getHeaders(),
       );
 
@@ -590,29 +552,38 @@ class ApiService {
     }
   }
 
-  /// Save setup data (general preferences) - Enhanced version
-  static Future<Map<String, dynamic>> saveSetupData({
-    String? workStyle,
-    String? jobType,
-    String? salaryRange,
-    String? availability,
-  }) async {
+  /// FIXED: Save setup data - Now uses dynamic URL
+  static Future<Map<String, dynamic>> saveSetupData(
+      Map<String, dynamic> data) async {
     try {
-      print('🔧 === SAVE SETUP DATA ENHANCED ===');
+      // ✅ FIXED: Use dynamic URL construction
+      final url = await ApiEndpoints.saveSetupData;
 
-      final requestBody = {
-        'work_style': workStyle,
-        'job_type': jobType,
-        'salary_range': salaryRange,
-        'availability': availability,
-      };
-
-      return await _makeAuthenticatedRequest(
-        'candidate/save_setup_data.php',
-        requestBody,
+      final response = await http.post(
+        Uri.parse(url),
+        headers: await _getHeaders(),
+        body: json.encode(data),
       );
+
+      return _handleResponse(response);
     } catch (e) {
-      print('🔧 ERROR in saveSetupData: $e');
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  /// FIXED: Get user data - Now uses dynamic URL
+  static Future<Map<String, dynamic>> getUserData() async {
+    try {
+      // ✅ FIXED: Use dynamic URL construction
+      final url = await ApiEndpoints.getUserData;
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: await _getHeaders(),
+      );
+
+      return _handleResponse(response);
+    } catch (e) {
       return {'success': false, 'message': 'Network error: $e'};
     }
   }
@@ -1257,145 +1228,64 @@ class ApiService {
     print('🔍 === ROOT CAUSE ANALYSIS COMPLETE ===');
   }
 
-  /// Enhanced Google Sign-In with detailed logging
+  /// FIXED: Google Sign-In - Now uses dynamic URL construction
   static Future<Map<String, dynamic>> googleSignInDebug({
     required String idToken,
     String? accessToken,
     String action = 'login',
     Map<String, dynamic>? additionalData,
   }) async {
-    // First run the diagnostic
-    await debugGoogleAuthConfiguration();
-
     try {
-      print('🔧 === DETAILED GOOGLE SIGN-IN DEBUG ===');
-      print('🔧 Input idToken: "${idToken}" (length: ${idToken.length})');
-      print(
-          '🔧 Input accessToken: "${accessToken ?? 'NULL'}" (null: ${accessToken == null})');
-      print('🔧 Input action: "$action"');
-      print(
-          '🔧 Input additionalData: ${additionalData?.keys.toList() ?? 'NULL'}');
+      print('🔧 === FIXED GOOGLE SIGN-IN DEBUG ===');
+      print('🔧 Using dynamic URL construction...');
 
-      // Build request body with extreme logging
-      final requestBody = <String, dynamic>{};
-      print('🔧 Building request body...');
+      // ✅ FIXED: Use dynamic URL instead of hardcoded
+      final url = await ApiEndpoints.googleAuth;
+      print('🔧 Dynamic URL: $url');
 
-      // Action
-      requestBody['action'] = action;
-      print('🔧 Added action: "$action"');
+      // Build request body
+      final requestBody = <String, dynamic>{
+        'action': action,
+      };
 
-      // ID Token
-      if (idToken.isNotEmpty) {
-        requestBody['idToken'] = idToken;
-        print('🔧 Added idToken (length: ${idToken.length})');
-      } else {
-        print('🔧 Skipped idToken (empty)');
+      if (idToken.trim().isNotEmpty) {
+        requestBody['idToken'] = idToken.trim();
       }
 
-      // Access Token
-      if (accessToken != null && accessToken.isNotEmpty) {
-        requestBody['accessToken'] = accessToken;
-        print('🔧 Added accessToken (length: ${accessToken.length})');
-      } else {
-        print('🔧 Skipped accessToken (null or empty)');
+      if (accessToken != null && accessToken.trim().isNotEmpty) {
+        requestBody['accessToken'] = accessToken.trim();
       }
 
-      // Additional data
       if (additionalData != null) {
         additionalData.forEach((key, value) {
           if (value != null) {
             requestBody[key] = value;
-            print('🔧 Added additional data: $key = $value');
-          } else {
-            print('🔧 Skipped additional data: $key (null value)');
           }
         });
       }
 
-      print('🔧 Final request body keys: ${requestBody.keys.toList()}');
-      print('🔧 Request body JSON test...');
+      print('🔧 Request body keys: ${requestBody.keys.toList()}');
 
-      // Test JSON encoding
-      String jsonBody;
-      try {
-        jsonBody = json.encode(requestBody);
-        print('🔧 JSON encoding successful (length: ${jsonBody.length})');
-        print(
-            '🔧 JSON preview: ${jsonBody.substring(0, math.min(100, jsonBody.length))}...');
-      } catch (e) {
-        print('🔧 ❌ JSON encoding failed: $e');
-        return {'success': false, 'message': 'JSON encoding error: $e'};
-      }
+      // Make request with dynamic URL
+      final response = await http
+          .post(
+            Uri.parse(url),
+            headers: {
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: json.encode(requestBody),
+          )
+          .timeout(const Duration(seconds: 30));
 
-      // Get headers
-      print('🔧 Getting headers...');
-      Map<String, String> headers;
-      try {
-        headers = await _getHeaders();
-        print('🔧 Headers obtained: ${headers.keys.toList()}');
-      } catch (e) {
-        print('🔧 ❌ Header creation failed: $e');
-        return {'success': false, 'message': 'Header creation error: $e'};
-      }
+      print('🔧 ✅ Dynamic URL request successful!');
+      print('🔧 Response status: ${response.statusCode}');
 
-      // Get URL
-      final url = ApiEndpoints.googleAuth;
-      print('🔧 Request URL: "$url"');
-
-      // Parse URI
-      Uri uri;
-      try {
-        uri = Uri.parse(url);
-        print('🔧 URI parsed successfully');
-      } catch (e) {
-        print('🔧 ❌ URI parsing failed: $e');
-        return {'success': false, 'message': 'URI parsing error: $e'};
-      }
-
-      // Make the actual request with detailed error catching
-      print('🔧 Making HTTP POST request...');
-
-      http.Response response;
-      try {
-        response = await http
-            .post(
-              uri,
-              headers: headers,
-              body: jsonBody,
-            )
-            .timeout(const Duration(seconds: 30));
-
-        print('🔧 ✅ HTTP request successful!');
-        print('🔧 Response status: ${response.statusCode}');
-        print('🔧 Response headers: ${response.headers.keys.toList()}');
-        print('🔧 Response body length: ${response.body.length}');
-      } catch (e, stackTrace) {
-        print('🔧 ❌ HTTP request failed: $e');
-        print('🔧 Error type: ${e.runtimeType}');
-        print('🔧 Stack trace: $stackTrace');
-
-        // Specific error analysis
-        if (e.toString().contains('XMLHttpRequest')) {
-          print(
-              '🔧 🎯 IDENTIFIED: XMLHttpRequest error - this is the root cause!');
-        }
-        if (e.toString().contains('Cannot send Null')) {
-          print(
-              '🔧 🎯 IDENTIFIED: Cannot send Null - checking what might be null...');
-          print('🔧   - URI: $uri');
-          print('🔧   - Headers: $headers');
-          print('🔧   - Body: $jsonBody');
-        }
-
-        return {'success': false, 'message': 'HTTP request error: $e'};
-      }
-
-      // Handle response
       return _handleResponse(response);
     } catch (e, stackTrace) {
-      print('🔧 ❌ Google Sign-In Debug failed: $e');
+      print('🔧 ❌ Dynamic Google Sign-In failed: $e');
       print('🔧 Stack trace: $stackTrace');
-      return {'success': false, 'message': 'Debug sign-in failed: $e'};
+      return {'success': false, 'message': 'Dynamic sign-in failed: $e'};
     }
   }
 

@@ -754,8 +754,10 @@ class ApiService {
   }
 
   /// Get job applications list - FIXED URI replace method issue
+  /// Get job applications list - FIXED: Added missing searchQuery parameter
   static Future<Map<String, dynamic>> getApplicationsList({
     String? status,
+    String? searchQuery, // ✅ ADDED: Missing searchQuery parameter
     int page = 1,
     int limit = 10,
   }) async {
@@ -769,11 +771,16 @@ class ApiService {
         queryParams['status'] = status;
       }
 
-      // FIXED: Properly await URI construction, then use replace
+      // ✅ ADDED: Handle searchQuery parameter
+      if (searchQuery != null && searchQuery.isNotEmpty) {
+        queryParams['search'] = searchQuery; // Use 'search' to match PHP API
+      }
+
+      // ✅ FIXED: Properly await URI construction, then use replace
       final baseUri = await _buildApiUri('candidate/get_applications_list.php');
       final uri = baseUri.replace(
         queryParameters: queryParams.isNotEmpty ? queryParams : null,
-      ); // FIXED: Now calling replace on actual Uri, not Future
+      );
 
       final response = await http.get(uri, headers: await _getHeaders());
       return _handleResponse(response);
@@ -782,7 +789,7 @@ class ApiService {
     }
   }
 
-  // Jobs List with Filters
+  /// Jobs List with Filters - FIXED: Await pattern for URI building
   static Future<Map<String, dynamic>> getJobsList({
     String? searchQuery,
     String? location,
@@ -797,7 +804,8 @@ class ApiService {
         return {'success': false, 'message': 'No authentication token found'};
       }
 
-      Map<String, dynamic> queryParams = {};
+      Map<String, String> queryParams =
+          {}; // ✅ CHANGED: String keys and values for URI
       if (searchQuery != null) queryParams['search'] = searchQuery;
       if (location != null) queryParams['location'] = location;
       if (jobType != null) queryParams['job_type'] = jobType;
@@ -807,8 +815,11 @@ class ApiService {
         queryParams['accommodations'] = accommodations.join(',');
       if (page != null) queryParams['page'] = page.toString();
 
-      final uri = _buildApiUri('candidate/get_jobs_list.php').replace(
-          queryParameters: queryParams.isNotEmpty ? queryParams : null);
+      // ✅ FIXED: Await the URI construction first, then call replace
+      final baseUri = await _buildApiUri('candidate/get_jobs_list.php');
+      final uri = baseUri.replace(
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
+      );
 
       final response = await http.get(
         uri,
@@ -897,7 +908,7 @@ class ApiService {
 // ==================== LANDING PAGE APIs ====================
 // ADD these methods to your existing ApiService class
 
-  /// Get jobs for landing page (calls your jobs.php)
+  /// Landing page jobs - FIXED: Same async pattern
   static Future<Map<String, dynamic>> getLandingJobs({
     String? search,
     String? location,
@@ -921,58 +932,16 @@ class ApiService {
       if (jobType != null && jobType.isNotEmpty)
         queryParams['job_type'] = jobType;
 
+      // ✅ FIXED: Await the endpoint building, then use replace
       final endpoint = await DynamicApiConfig.buildEndpoint('shared/jobs.php');
       final uri = Uri.parse(endpoint).replace(
-          queryParameters: queryParams.isNotEmpty ? queryParams : null);
-
-      print('🔧 Fetching jobs from: $uri');
-
-      // Make request (no auth required for public landing page)
-      final response = await http.get(
-        uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-        },
+        queryParameters: queryParams.isNotEmpty ? queryParams : null,
       );
 
-      print('🔧 Jobs API Response: ${response.statusCode}');
-      print('🔧 Jobs API Body: ${response.body}');
-
-      // Handle response
-      if (response.statusCode == 200) {
-        final data = json.decode(response.body);
-        return data;
-      } else {
-        return {
-          'success': false,
-          'message': 'HTTP ${response.statusCode}: ${response.body}',
-          'data': {
-            'jobs': [],
-            'pagination': {
-              'total': 0,
-              'limit': limit,
-              'offset': offset,
-              'has_more': false
-            }
-          }
-        };
-      }
+      final response = await http.get(uri, headers: await _getHeaders());
+      return _handleResponse(response);
     } catch (e) {
-      print('🔧 Error fetching jobs: $e');
-      return {
-        'success': false,
-        'message': 'Connection error: $e',
-        'data': {
-          'jobs': [],
-          'pagination': {
-            'total': 0,
-            'limit': limit,
-            'offset': offset,
-            'has_more': false
-          }
-        }
-      };
+      return {'success': false, 'message': 'Network error: $e'};
     }
   }
 

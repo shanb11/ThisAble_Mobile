@@ -345,8 +345,10 @@ class ApiService {
     String? suffix,
   }) async {
     try {
+      // ✅ CORRECT:
+      final url = await ApiEndpoints.signup;
       final response = await http.post(
-        Uri.parse(ApiEndpoints.signup),
+        Uri.parse(url),
         headers: await _getHeaders(),
         body: json.encode({
           'firstName': firstName,
@@ -390,8 +392,10 @@ class ApiService {
     required String pwdIdIssuingLGU,
   }) async {
     try {
+      // ✅ CORRECT:
+      final url = await ApiEndpoints.verifyPwd;
       final response = await http.post(
-        Uri.parse(ApiEndpoints.verifyPwd),
+        Uri.parse(url),
         headers: await _getHeaders(includeAuth: true),
         body: json.encode({
           'pwdIdNumber': pwdIdNumber,
@@ -1292,11 +1296,13 @@ class ApiService {
       print('🔍 Base URL contains "null": ${baseUrl.contains("null")}');
 
       // Test 4: Test API endpoints
+      // Test 4: Test API endpoints
       print('🔍 Testing API endpoints...');
-      print('🔍 Google Auth URL: ${ApiEndpoints.googleAuth}');
+      final googleAuthUrl =
+          await ApiEndpoints.googleAuth; // ✅ FIXED: Added await
+      print('🔍 Google Auth URL: $googleAuthUrl'); // ✅ FIXED: Use variable
       print(
-          '🔍 Google Auth contains "null": ${ApiEndpoints.googleAuth.contains("null")}');
-
+          '🔍 Google Auth contains "null": ${googleAuthUrl.contains("null")}'); // ✅ FIXED: Use variable
       // Test 5: Test basic connectivity
       print('🔍 Testing basic connectivity...');
       try {
@@ -1315,7 +1321,7 @@ class ApiService {
 
       // Test 6: Test Google Sign-In URL construction
       print('🔍 Testing Google Sign-In URL construction...');
-      final googleUrl = ApiEndpoints.googleAuth;
+      final googleUrl = await ApiEndpoints.googleAuth;
       final uri = Uri.parse(googleUrl);
       print('🔍 Google URL scheme: ${uri.scheme}');
       print('🔍 Google URL host: ${uri.host}');

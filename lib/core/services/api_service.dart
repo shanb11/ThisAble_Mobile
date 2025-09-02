@@ -664,12 +664,14 @@ class ApiService {
   }
 
   /// Get device-appropriate base URL
-  static String getDeviceUrl() {
+// ✅ CORRECT - Fixed code:
+  static Future<String> getDeviceUrl() async {
     // For Android emulator, use 10.0.2.2 instead of localhost
     // For iOS simulator, localhost works fine
     // For physical devices, use your computer's IP address
 
-    return ApiEndpoints.baseUrl.replaceAll('localhost', '10.0.2.2');
+    final baseUrl = await ApiEndpoints.baseUrl;
+    return baseUrl.replaceAll('localhost', '10.0.2.2');
   }
 
   /// Upload resume file - FIXED multipart request URI issue

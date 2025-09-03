@@ -100,31 +100,44 @@ class ApiService {
     return cleanHeaders;
   }
 
-  /// Handle API response (matches your PHP ApiResponse format)
+  /// Handle API response (matches your PHP ApiResponse format) - NULL SAFE VERSION
   static Map<String, dynamic> _handleResponse(http.Response response) {
     try {
-      final Map<String, dynamic> data = json.decode(response.body);
+      // Parse JSON response safely
+      final dynamic jsonResponse = json.decode(response.body);
+
+      // Ensure we have a Map, not null or other type
+      if (jsonResponse is! Map<String, dynamic>) {
+        return {
+          'success': false,
+          'message': 'Invalid response format',
+          'data': null
+        };
+      }
+
+      final Map<String, dynamic> data = jsonResponse;
 
       // Your PHP API returns 'success' field
       if (data['success'] == true) {
         return {
           'success': true,
-          'data': data['data'],
+          'data': data['data'], // This can be null, and that's okay
           'message': data['message'] ?? 'Success'
         };
       } else {
         return {
           'success': false,
           'message': data['message'] ?? 'Unknown error occurred',
-          'errors': data['errors'],
-          'statusCode': response.statusCode
+          'errors': data['errors'], // This can be null
+          'data': data['data'] // This can be null
         };
       }
     } catch (e) {
+      // Handle JSON parsing errors
       return {
         'success': false,
-        'message': 'Failed to parse response: $e',
-        'statusCode': response.statusCode
+        'message': 'Failed to parse server response: $e',
+        'data': null
       };
     }
   }
@@ -253,7 +266,7 @@ class ApiService {
     }
   }
 
-  /// FIXED: Google Sign-In with proper async/await handling
+  /// FIXED: Google Sign-In with proper response handling
   static Future<Map<String, dynamic>> googleSignIn({
     required String idToken,
     String? accessToken,
@@ -300,7 +313,7 @@ class ApiService {
 
       print('🔧 Request body keys: ${requestBody.keys.toList()}');
 
-      // ✅ CRITICAL FIX: Properly await the ApiEndpoints method
+      // ✅ Get the API endpoint dynamically
       final googleAuthUrl = await ApiEndpoints.googleAuth;
 
       final response = await http.post(
@@ -309,11 +322,16 @@ class ApiService {
         body: json.encode(requestBody),
       );
 
+      print('🔧 ✅ Dynamic URL request successful!');
+      print('🔧 Response status: ${response.statusCode}');
+
       final result = _handleResponse(response);
+
+      print('🔧 API Result Success: ${result['success']}');
 
       // Store tokens if successful
       if (result['success'] && result['data'] != null) {
-        final data = result['data'];
+        final data = result['data'] as Map<String, dynamic>;
         if (data['token'] != null) {
           await setToken(data['token']);
         }
@@ -322,6 +340,7 @@ class ApiService {
         }
       }
 
+      print('🔧 === GOOGLE SIGN-IN COMPLETE ===');
       return result;
     } catch (e, stackTrace) {
       print('🔧 Google Sign-In error: $e');

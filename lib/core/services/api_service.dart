@@ -9,6 +9,7 @@ import 'dart:math' as math;
 // Only add this import if you're on web
 import 'dart:html' as html;
 import 'network_discovery_service.dart';
+import 'dart:math' as math;
 
 class ApiService {
   /// Add these methods anywhere in your ApiService class:
@@ -149,18 +150,33 @@ class ApiService {
     return Uri.parse(fullUrl);
   }
 
-  /// MISSING METHOD: Generic GET request method
-  static Future<Map<String, dynamic>> _makeGetRequest(String endpoint) async {
+  /// Make GET request with optional authentication - UPDATED VERSION
+  static Future<Map<String, dynamic>> _makeGetRequest(String endpoint,
+      {bool includeAuth = false}) async {
     try {
+      print(
+          '🔧 [ApiService] Making GET request to: $endpoint (auth: $includeAuth)');
+
+      // If auth required, check token first
+      if (includeAuth) {
+        final token = await getToken();
+        if (token == null || token.isEmpty) {
+          return {
+            'success': false,
+            'message': 'Authentication required',
+            'requiresLogin': true
+          };
+        }
+      }
+
       final uri = await _buildApiUri(endpoint);
+      final response = await http.get(uri,
+          headers: await _getHeaders(includeAuth: includeAuth));
 
-      final response = await http.get(
-        uri,
-        headers: await _getHeaders(includeAuth: true),
-      );
-
+      print('🔧 [ApiService] Response status: ${response.statusCode}');
       return _handleResponse(response);
     } catch (e) {
+      print('🔧 [ApiService] Error in _makeGetRequest: $e');
       return {'success': false, 'message': 'Network error: $e'};
     }
   }
@@ -767,20 +783,59 @@ class ApiService {
 
   // ==================== DASHBOARD APIs ====================
 
-  // Dashboard Home Data
+  // Dashboard Home Data - FIXED: Added authentication (without _makeGetRequest dependency)
   static Future<Map<String, dynamic>> getDashboardHome() async {
-    return await _makeGetRequest('candidate/get_dashboard_home.php');
+    try {
+      print('🔧 [ApiService] Getting dashboard home data...');
+
+      // Check authentication
+      final token = await getToken();
+      if (token == null || token.isEmpty) {
+        return {
+          'success': false,
+          'message': 'Authentication required',
+          'requiresLogin': true
+        };
+      }
+
+      final uri = await _buildApiUri('candidate/get_dashboard_home.php');
+      final response = await http.get(uri,
+          headers: await _getHeaders(
+              includeAuth: true) // FIXED: Added includeAuth: true
+          );
+
+      print(
+          '🔧 [ApiService] Dashboard response status: ${response.statusCode}');
+      return _handleResponse(response);
+    } catch (e) {
+      print('🔧 [ApiService] Error in getDashboardHome: $e');
+      return {'success': false, 'message': 'Network error: $e'};
+    }
   }
 
-  /// Get job applications list - FIXED URI replace method issue
-  /// Get job applications list - FIXED: Added missing searchQuery parameter
+  /// Get job applications list - MAIN FIX FOR YOUR FILTER ISSUE
   static Future<Map<String, dynamic>> getApplicationsList({
     String? status,
-    String? searchQuery, // ✅ ADDED: Missing searchQuery parameter
+    String? searchQuery,
     int page = 1,
     int limit = 10,
   }) async {
     try {
+      print('🔧 [ApiService] getApplicationsList called');
+      print(
+          '🔧 [ApiService] Status: $status, Search: $searchQuery, Page: $page');
+
+      // Check authentication first
+      final token = await getToken();
+      if (token == null || token.isEmpty) {
+        print('🔧 [ApiService] No token found');
+        return {
+          'success': false,
+          'message': 'Authentication required',
+          'requiresLogin': true
+        };
+      }
+
       Map<String, String> queryParams = {
         'page': page.toString(),
         'limit': limit.toString(),
@@ -790,20 +845,30 @@ class ApiService {
         queryParams['status'] = status;
       }
 
-      // ✅ ADDED: Handle searchQuery parameter
+      // Handle searchQuery parameter (matches PHP API expectation)
       if (searchQuery != null && searchQuery.isNotEmpty) {
-        queryParams['search'] = searchQuery; // Use 'search' to match PHP API
+        queryParams['search'] = searchQuery; // PHP expects 'search' parameter
       }
 
-      // ✅ FIXED: Properly await URI construction, then use replace
+      // Build URI with query parameters
       final baseUri = await _buildApiUri('candidate/get_applications_list.php');
       final uri = baseUri.replace(
         queryParameters: queryParams.isNotEmpty ? queryParams : null,
       );
 
-      final response = await http.get(uri, headers: await _getHeaders());
+      print('🔧 [ApiService] Request URI: $uri');
+
+      // 🎯 THIS IS THE MAIN FIX - Added includeAuth: true
+      final response =
+          await http.get(uri, headers: await _getHeaders(includeAuth: true));
+
+      print('🔧 [ApiService] Response status: ${response.statusCode}');
+      print(
+          '🔧 [ApiService] Response body preview: ${response.body.substring(0, math.min(200, response.body.length))}');
+
       return _handleResponse(response);
     } catch (e) {
+      print('🔧 [ApiService] Error in getApplicationsList: $e');
       return {'success': false, 'message': 'Network error: $e'};
     }
   }
@@ -851,14 +916,58 @@ class ApiService {
     }
   }
 
-  // Profile Data
+  // Profile Data - FIXED: Added authentication
   static Future<Map<String, dynamic>> getProfileData() async {
-    return await _makeGetRequest('candidate/get_profile_data.php');
+    try {
+      print('🔧 [ApiService] Getting profile data...');
+
+      // Check authentication
+      final token = await getToken();
+      if (token == null || token.isEmpty) {
+        return {
+          'success': false,
+          'message': 'Authentication required',
+          'requiresLogin': true
+        };
+      }
+
+      final uri = await _buildApiUri('candidate/get_profile_data.php');
+      final response = await http.get(uri,
+          headers: await _getHeaders(
+              includeAuth: true) // FIXED: Added includeAuth: true
+          );
+
+      return _handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
   }
 
-  // User Settings
+  // User Settings - FIXED: Added authentication
   static Future<Map<String, dynamic>> getUserSettings() async {
-    return await _makeGetRequest('candidate/get_user_settings.php');
+    try {
+      print('🔧 [ApiService] Getting user settings...');
+
+      // Check authentication
+      final token = await getToken();
+      if (token == null || token.isEmpty) {
+        return {
+          'success': false,
+          'message': 'Authentication required',
+          'requiresLogin': true
+        };
+      }
+
+      final uri = await _buildApiUri('candidate/get_user_settings.php');
+      final response = await http.get(uri,
+          headers: await _getHeaders(
+              includeAuth: true) // FIXED: Added includeAuth: true
+          );
+
+      return _handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
   }
 
   // ==================== ACTION APIs ====================

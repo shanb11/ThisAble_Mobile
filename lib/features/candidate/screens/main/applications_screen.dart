@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../../core/services/api_service.dart';
+import 'dart:math' as math; // Add this if missing
 
 class CandidateApplicationsScreen extends StatefulWidget {
   const CandidateApplicationsScreen({super.key});
@@ -26,6 +27,7 @@ class _CandidateApplicationsScreenState
   // Animation Controllers
   late AnimationController _statsAnimationController;
   late List<Animation<double>> _statsAnimations;
+  late ScrollController _scrollController;
 
   // Loading States
   bool _isLoadingApplications = true;
@@ -46,6 +48,27 @@ class _CandidateApplicationsScreenState
     super.initState();
     _initializeAnimations();
     _loadApplicationsData();
+
+    _scrollController = ScrollController();
+    _scrollController.addListener(_onScroll);
+  }
+
+  // ADD THIS: Scroll listener for pagination
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      if (_hasMoreData && !_isLoadingApplications) {
+        _loadMoreApplications();
+      }
+    }
+  }
+
+  // ADD THIS: Load more applications for pagination
+  void _loadMoreApplications() async {
+    if (_isDisposed || !_hasMoreData || _isLoadingApplications) return;
+
+    _currentPage++;
+    await _loadApplications();
   }
 
   // Fix the _initializeAnimations method in applications_screen.dart around line 45
@@ -99,6 +122,10 @@ class _CandidateApplicationsScreenState
 
     // Dispose text controllers
     _searchController.dispose();
+
+    // ADD THIS: Dispose scroll controller
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
 
     print('🔧 [Applications] Widget disposed successfully');
     super.dispose();
@@ -296,17 +323,26 @@ class _CandidateApplicationsScreenState
     );
   }
 
+  // FIXED: Filter applications properly
   List<dynamic> get _filteredApplications {
-    return _allApplications.where((app) {
-      if (_searchQuery.isNotEmpty) {
-        final query = _searchQuery.toLowerCase();
-        return (app['job_title']?.toString().toLowerCase().contains(query) ??
-                false) ||
-            (app['company_name']?.toString().toLowerCase().contains(query) ??
-                false);
+    if (_selectedFilter == 'all') {
+      print('🔧 [Filter] Showing all ${_allApplications.length} applications');
+      return _allApplications;
+    }
+
+    final filtered = _allApplications.where((app) {
+      final status = app['application_status']?.toString() ?? '';
+      final matches = status == _selectedFilter;
+      if (matches) {
+        print(
+            '🔧 [Filter] Application ${app['application_id']} matches filter $_selectedFilter (status: $status)');
       }
-      return true;
+      return matches;
     }).toList();
+
+    print(
+        '🔧 [Filter] Filter $_selectedFilter returned ${filtered.length} applications');
+    return filtered;
   }
 
   @override
@@ -533,20 +569,20 @@ class _CandidateApplicationsScreenState
     );
   }
 
-  // Fix the _buildFiltersSection method around line 180
+  // FIXED: Use user-specific status counts from API
   Widget _buildFiltersSection() {
     final filters = [
-      // FIXED: Use applications_count from dashboard stats for 'all' count
       FilterOption('all', 'All', _statsData['applications_count'] ?? 0),
-      // FIXED: These detailed breakdown stats aren't in current API, using 0 for now
-      // TODO: Update get_applications_list.php to return status-based counts in filter_stats
+      FilterOption('submitted', 'Applied', _statsData['submitted_count'] ?? 0),
+      FilterOption('under_review', 'Under Review',
+          _statsData['under_review_count'] ?? 0),
       FilterOption(
-          'applied', 'Applied', 0), // Will be populated when API is updated
-      FilterOption('under_review', 'Under Review', 0),
-      FilterOption(
-          'interview', 'Interview', _statsData['interviews_count'] ?? 0),
-      FilterOption('offered', 'Offered', 0),
-      FilterOption('rejected', 'Rejected', 0),
+          'interview_scheduled',
+          'Interview',
+          _statsData['interview_scheduled_count'] ??
+              0), // This will now show 0 for your user
+      FilterOption('hired', 'Offered', _statsData['hired_count'] ?? 0),
+      FilterOption('rejected', 'Rejected', _statsData['rejected_count'] ?? 0),
     ];
 
     return Container(
@@ -579,22 +615,24 @@ class _CandidateApplicationsScreenState
                     style: TextStyle(
                       color: isSelected ? Colors.white : Colors.black87,
                       fontWeight:
-                          isSelected ? FontWeight.w600 : FontWeight.normal,
+                          isSelected ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),
                   if (filter.count > 0) ...[
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(
                           horizontal: 6, vertical: 2),
                       decoration: BoxDecoration(
-                        color: isSelected ? Colors.white : primaryColor,
+                        color: isSelected
+                            ? Colors.white.withOpacity(0.2)
+                            : Colors.grey[200],
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
                         filter.count.toString(),
                         style: TextStyle(
-                          color: isSelected ? primaryColor : Colors.white,
+                          color: isSelected ? Colors.white : Colors.grey[600],
                           fontSize: 12,
                           fontWeight: FontWeight.bold,
                         ),
@@ -610,38 +648,225 @@ class _CandidateApplicationsScreenState
     );
   }
 
-  Widget _buildApplicationsList() {
-    if (_isLoadingApplications && _allApplications.isEmpty) {
-      return SliverToBoxAdapter(
-        child: Container(
-          height: 400,
-          child: const Center(
-            child: CircularProgressIndicator(
-              valueColor: AlwaysStoppedAnimation<Color>(primaryColor),
+  // FIXED: Get proper display name for filters
+  String _getFilterDisplayName(String filter) {
+    switch (filter) {
+      case 'submitted':
+        return 'Applied';
+      case 'under_review':
+        return 'Under Review';
+      case 'interview_scheduled':
+        return 'Interview';
+      case 'hired':
+        return 'Offered';
+      case 'rejected':
+        return 'Rejected';
+      default:
+        return filter;
+    }
+  }
+
+  Widget _buildStatistics() {
+    if (_isLoadingStats) {
+      return const Padding(
+        padding: EdgeInsets.all(16),
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    final statItems = [
+      StatItem(
+        'All Applications',
+        _statsData['applications_count'] ?? 0,
+        Icons.assignment,
+        primaryColor,
+      ),
+      StatItem(
+        'Under Review',
+        _statsData['under_review_count'] ?? 0, // FIXED: Use user-specific count
+        Icons.hourglass_empty,
+        Colors.orange,
+      ),
+      StatItem(
+        'Interviews',
+        _statsData['interview_scheduled_count'] ??
+            0, // FIXED: Use user-specific count
+        Icons.calendar_today,
+        Colors.blue,
+      ),
+      StatItem(
+        'Offers',
+        _statsData['hired_count'] ?? 0, // FIXED: Use user-specific count
+        Icons.check_circle,
+        Colors.green,
+      ),
+    ];
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Application Statistics',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.black87,
             ),
+          ),
+          const SizedBox(height: 16),
+          GridView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: 2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              childAspectRatio: 1.2,
+            ),
+            itemCount: statItems.length,
+            itemBuilder: (context, index) {
+              final item = statItems[index];
+              return Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: item.color.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: item.color.withOpacity(0.2),
+                  ),
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(item.icon, color: item.color, size: 32),
+                    const SizedBox(height: 8),
+                    Text(
+                      item.value.toString(),
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: item.color,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      item.title,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // FIXED: Applications list widget to show all applications
+  Widget _buildApplicationsList() {
+    print(
+        '🔧 [Display] Building applications list with ${_filteredApplications.length} items');
+    print('🔧 [Display] All applications count: ${_allApplications.length}');
+    print('🔧 [Display] Selected filter: $_selectedFilter');
+
+    if (_isLoadingApplications) {
+      return const Expanded(
+        child: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (_filteredApplications.isEmpty) {
+      return Expanded(
+        child: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.inbox_outlined,
+                size: 64,
+                color: Colors.grey[400],
+              ),
+              const SizedBox(height: 16),
+              Text(
+                _selectedFilter == 'all'
+                    ? 'No applications yet'
+                    : 'No ${_getFilterDisplayName(_selectedFilter)} applications',
+                style: TextStyle(
+                  fontSize: 18,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                _selectedFilter == 'all'
+                    ? 'Start applying to jobs to see them here'
+                    : 'Try a different filter to see more applications',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[500],
+                ),
+              ),
+              const SizedBox(height: 24),
+              if (_selectedFilter == 'all')
+                ElevatedButton(
+                  onPressed: () =>
+                      Navigator.pushNamed(context, '/candidate/jobs'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 32, vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text('Browse Jobs'),
+                ),
+            ],
           ),
         ),
       );
     }
 
-    if (_filteredApplications.isEmpty) {
-      return SliverToBoxAdapter(child: _buildEmptyState());
-    }
-
-    return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, index) {
+    return Expanded(
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.all(16),
+        itemCount: _filteredApplications.length + (_hasMoreData ? 1 : 0),
+        itemBuilder: (context, index) {
           if (index == _filteredApplications.length) {
-            if (_hasMoreData) {
-              return _buildLoadMoreButton();
-            }
-            return const SizedBox.shrink();
+            return const Padding(
+              padding: EdgeInsets.all(16),
+              child: Center(child: CircularProgressIndicator()),
+            );
           }
 
           final application = _filteredApplications[index];
+          print(
+              '🔧 [Display] Building item $index: ${application['job_title']} - ${application['application_status']}');
+
           return _buildApplicationCard(application);
         },
-        childCount: _filteredApplications.length + (_hasMoreData ? 1 : 0),
       ),
     );
   }
@@ -724,9 +949,59 @@ class _CandidateApplicationsScreenState
     );
   }
 
+  // FIXED: Status display mapping
+  String _getStatusDisplay(String status) {
+    switch (status) {
+      case 'submitted':
+        return 'Applied';
+      case 'under_review':
+        return 'Under Review';
+      case 'interview_scheduled':
+        return 'Interview Scheduled';
+      case 'interviewed':
+        return 'Interviewed';
+      case 'hired':
+        return 'Offered';
+      case 'rejected':
+        return 'Rejected';
+      case 'withdrawn':
+        return 'Withdrawn';
+      default:
+        return status
+            .split('_')
+            .map((word) => word[0].toUpperCase() + word.substring(1))
+            .join(' ');
+    }
+  }
+
+  // FIXED: Status color mapping
+  Color _getStatusColor(String status) {
+    switch (status) {
+      case 'submitted':
+        return Colors.blue;
+      case 'under_review':
+        return Colors.orange;
+      case 'interview_scheduled':
+      case 'interviewed':
+        return Colors.purple;
+      case 'hired':
+        return Colors.green;
+      case 'rejected':
+      case 'withdrawn':
+        return Colors.red;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  // FIXED: Application card with correct status display
   Widget _buildApplicationCard(Map<String, dynamic> application) {
+    final status = application['application_status']?.toString() ?? '';
+    final statusDisplay = _getStatusDisplay(status);
+    final statusColor = _getStatusColor(status);
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -734,115 +1009,129 @@ class _CandidateApplicationsScreenState
           BoxShadow(
             color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
-            offset: const Offset(0, 2),
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: InkWell(
-        onTap: () => _showApplicationDetails(application),
-        borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Container(
-                    width: 50,
-                    height: 50,
-                    decoration: BoxDecoration(
-                      color: primaryColor.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Center(
-                      child: Text(
-                        _getCompanyInitials(application['company_name'] ?? ''),
-                        style: const TextStyle(
-                          color: primaryColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                // Company logo or initials
+                Container(
+                  width: 50,
+                  height: 50,
+                  decoration: BoxDecoration(
+                    color: primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Center(
+                    child: Text(
+                      _getCompanyInitials(application['company_name'] ?? ''),
+                      style: TextStyle(
+                        color: primaryColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
                       ),
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          application['job_title'] ?? 'Unknown Position',
-                          style: const TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
-                          ),
+                ),
+                const SizedBox(width: 16),
+                // Job details
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        application['job_title'] ?? 'Unknown Job',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          application['company_name'] ?? 'Unknown Company',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        application['company_name'] ?? 'Unknown Company',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: Colors.grey[600],
                         ),
-                      ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Icon(Icons.location_on,
+                              size: 16, color: Colors.grey[500]),
+                          const SizedBox(width: 4),
+                          Expanded(
+                            child: Text(
+                              application['location'] ??
+                                  'Location not specified',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey[500],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Icon(Icons.work, size: 16, color: Colors.grey[500]),
+                          const SizedBox(width: 4),
+                          Text(
+                            application['employment_type'] ?? 'Not specified',
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Colors.grey[500],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Status badge
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: statusColor.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    statusDisplay,
+                    style: TextStyle(
+                      color: statusColor,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  _buildStatusBadge(application['status'] ?? 'applied'),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  _buildInfoChip(
-                    Icons.location_on,
-                    application['location'] ?? 'Remote',
-                  ),
-                  const SizedBox(width: 12),
-                  _buildInfoChip(
-                    Icons.work,
-                    application['employment_type'] ?? 'Full-time',
-                  ),
-                ],
-              ),
-              if (application['salary_range'] != null) ...[
-                const SizedBox(height: 8),
-                _buildInfoChip(
-                  Icons.attach_money,
-                  application['salary_range'],
                 ),
               ],
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    'Applied ${_formatDate(application['applied_at'])}',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.grey[500],
-                    ),
-                  ),
-                  if (_canWithdraw(application))
-                    TextButton(
-                      onPressed: _isPerformingAction
-                          ? null
-                          : () => _confirmWithdrawal(application),
-                      child: Text(
-                        'Withdraw',
-                        style: TextStyle(
-                          color: Colors.red[600],
-                          fontSize: 12,
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-            ],
+            ),
           ),
-        ),
+          // Applied date
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: Colors.grey[50],
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(16),
+                bottomRight: Radius.circular(16),
+              ),
+            ),
+            child: Text(
+              'Applied ${_formatDate(application['applied_at'])}',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey[600],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -919,32 +1208,40 @@ class _CandidateApplicationsScreenState
   }
 
   String _getCompanyInitials(String companyName) {
-    if (companyName.isEmpty) return 'C';
+    if (companyName.isEmpty) return 'TC';
     final words = companyName.split(' ');
     if (words.length >= 2) {
       return '${words[0][0]}${words[1][0]}'.toUpperCase();
     }
-    return companyName.substring(0, 1).toUpperCase();
+    return companyName
+        .substring(0, math.min(2, companyName.length))
+        .toUpperCase();
   }
 
   String _formatDate(dynamic dateString) {
-    if (dateString == null) return 'N/A';
+    if (dateString == null) return 'Unknown date';
     try {
       final date = DateTime.parse(dateString.toString());
-      final now = DateTime.now();
-      final difference = now.difference(date).inDays;
 
-      if (difference == 0) {
-        return 'today';
-      } else if (difference == 1) {
-        return 'yesterday';
-      } else if (difference < 7) {
-        return '${difference} days ago';
-      } else {
-        return '${date.day}/${date.month}/${date.year}';
-      }
+      // Built-in formatting without external packages
+      final months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec'
+      ];
+
+      return '${months[date.month - 1]} ${date.day}, ${date.year}';
     } catch (e) {
-      return dateString.toString();
+      return dateString.toString().split(' ')[0];
     }
   }
 

@@ -1530,9 +1530,9 @@ class ApiService {
     try {
       print('🔧 [API] Getting application details for ID: $applicationId');
 
-      // Get the current base URL
-      final baseUrl = DynamicApiConfig.baseUrl;
-      if (baseUrl == null || baseUrl.isEmpty) {
+      // ✅ FIXED: Use the correct async method that exists in DynamicApiConfig
+      final baseUrl = await DynamicApiConfig.getBaseUrl();
+      if (baseUrl.isEmpty) {
         throw Exception('API base URL not configured');
       }
 
@@ -1540,8 +1540,8 @@ class ApiService {
           '$baseUrl/candidate/get_application_details.php?application_id=$applicationId';
       print('🔧 [API] Request URL: $url');
 
-      // Get stored authentication token
-      final token = await _getStoredToken();
+      // ✅ FIXED: Use the correct method that exists in ApiService
+      final token = await getToken();
       if (token == null) {
         throw Exception('Authentication token not found');
       }
@@ -1612,6 +1612,122 @@ class ApiService {
         return {
           'success': false,
           'message': 'Failed to get application details: ${e.toString()}',
+        };
+      }
+    }
+  }
+
+  // ADD THIS METHOD TO YOUR ApiService CLASS
+// Place it with your other application-related methods
+
+  /// PHASE 4: Withdraw application
+  static Future<Map<String, dynamic>> withdrawApplication({
+    required int applicationId,
+    String? reason,
+  }) async {
+    try {
+      print('🔧 [API] Withdrawing application: $applicationId');
+
+      // Get base URL
+      final baseUrl = await DynamicApiConfig.getBaseUrl();
+      if (baseUrl.isEmpty) {
+        throw Exception('API base URL not configured');
+      }
+
+      final url = '$baseUrl/candidate/withdraw_application.php';
+      print('🔧 [API] Request URL: $url');
+
+      // Get authentication token
+      final token = await getToken();
+      if (token == null) {
+        throw Exception('Authentication token not found');
+      }
+
+      // Build request body
+      final requestBody = {
+        'application_id': applicationId,
+        'reason': reason ?? 'Withdrawn by candidate',
+      };
+
+      print(
+          '🔧 [API] Withdrawing application $applicationId with reason: ${reason ?? "No reason provided"}');
+
+      final response = await http
+          .post(
+            Uri.parse(url),
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: json.encode(requestBody),
+          )
+          .timeout(const Duration(seconds: 30));
+
+      print('🔧 [API] Response status: ${response.statusCode}');
+      print('🔧 [API] Response body: ${response.body}');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['success'] == true) {
+          print('✅ [API] Application withdrawn successfully');
+          return {
+            'success': true,
+            'data': data['data'],
+            'message': data['message'] ?? 'Application withdrawn successfully'
+          };
+        } else {
+          print('❌ [API] Server returned error: ${data['message']}');
+          return {
+            'success': false,
+            'message': data['message'] ?? 'Failed to withdraw application',
+          };
+        }
+      } else if (response.statusCode == 400) {
+        final data = json.decode(response.body);
+        print('❌ [API] Validation error: ${data['message']}');
+        return {
+          'success': false,
+          'message':
+              data['message'] ?? 'Cannot withdraw application at this stage',
+        };
+      } else if (response.statusCode == 401) {
+        print('❌ [API] Authentication failed');
+        return {
+          'success': false,
+          'message': 'Authentication failed. Please log in again.',
+          'require_login': true,
+        };
+      } else if (response.statusCode == 404) {
+        print('❌ [API] Application not found');
+        return {
+          'success': false,
+          'message': 'Application not found or access denied',
+        };
+      } else {
+        print('❌ [API] HTTP error: ${response.statusCode}');
+        return {
+          'success': false,
+          'message': 'Server error: ${response.statusCode}',
+        };
+      }
+    } catch (e) {
+      print('❌ [API] Exception in withdrawApplication: $e');
+
+      if (e.toString().contains('TimeoutException')) {
+        return {
+          'success': false,
+          'message': 'Request timeout. Please check your connection.',
+        };
+      } else if (e.toString().contains('SocketException')) {
+        return {
+          'success': false,
+          'message': 'Network error. Please check your internet connection.',
+        };
+      } else {
+        return {
+          'success': false,
+          'message': 'Failed to withdraw application: ${e.toString()}',
         };
       }
     }

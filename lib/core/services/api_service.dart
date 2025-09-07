@@ -699,7 +699,7 @@ class ApiService {
   }
 
   /// Get device-appropriate base URL
-// ✅ CORRECT - Fixed code:
+  // ✅ CORRECT - Fixed code:
   static Future<String> getDeviceUrl() async {
     // For Android emulator, use 10.0.2.2 instead of localhost
     // For iOS simulator, localhost works fine
@@ -1521,6 +1521,99 @@ class ApiService {
         'success': false,
         'message': 'Test request failed: $e',
       };
+    }
+  }
+
+  /// Add this method to your ApiService class in api_service.dart
+  static Future<Map<String, dynamic>> getApplicationDetails(
+      int applicationId) async {
+    try {
+      print('🔧 [API] Getting application details for ID: $applicationId');
+
+      // Get the current base URL
+      final baseUrl = DynamicApiConfig.baseUrl;
+      if (baseUrl == null || baseUrl.isEmpty) {
+        throw Exception('API base URL not configured');
+      }
+
+      final url =
+          '$baseUrl/candidate/get_application_details.php?application_id=$applicationId';
+      print('🔧 [API] Request URL: $url');
+
+      // Get stored authentication token
+      final token = await _getStoredToken();
+      if (token == null) {
+        throw Exception('Authentication token not found');
+      }
+
+      final response = await http.get(
+        Uri.parse(url),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      ).timeout(const Duration(seconds: 30));
+
+      print('🔧 [API] Response status: ${response.statusCode}');
+      print(
+          '🔧 [API] Response body preview: ${response.body.substring(0, response.body.length > 200 ? 200 : response.body.length)}...');
+
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+
+        if (data['success'] == true) {
+          print('✅ [API] Application details retrieved successfully');
+          return {
+            'success': true,
+            'data': data['data'],
+            'message': data['message'] ?? 'Application details retrieved'
+          };
+        } else {
+          print('❌ [API] Server returned error: ${data['message']}');
+          return {
+            'success': false,
+            'message': data['message'] ?? 'Failed to get application details',
+          };
+        }
+      } else if (response.statusCode == 401) {
+        print('❌ [API] Authentication failed - token may be expired');
+        return {
+          'success': false,
+          'message': 'Authentication failed. Please log in again.',
+          'require_login': true,
+        };
+      } else if (response.statusCode == 404) {
+        print('❌ [API] Application not found');
+        return {
+          'success': false,
+          'message': 'Application not found or access denied',
+        };
+      } else {
+        print('❌ [API] HTTP error: ${response.statusCode}');
+        return {
+          'success': false,
+          'message': 'Server error: ${response.statusCode}',
+        };
+      }
+    } catch (e) {
+      print('❌ [API] Exception in getApplicationDetails: $e');
+
+      if (e.toString().contains('TimeoutException')) {
+        return {
+          'success': false,
+          'message': 'Request timeout. Please check your connection.',
+        };
+      } else if (e.toString().contains('SocketException')) {
+        return {
+          'success': false,
+          'message': 'Network error. Please check your internet connection.',
+        };
+      } else {
+        return {
+          'success': false,
+          'message': 'Failed to get application details: ${e.toString()}',
+        };
+      }
     }
   }
 }

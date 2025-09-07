@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../../core/services/api_service.dart';
+import '../../widgets/application_details_modal.dart';
 
 /// FIXED: Complete Applications Screen - Works for ANY candidate account
 /// Eliminates assertion error "child ==_ child is not true"
@@ -627,74 +628,158 @@ class _CandidateApplicationsScreenState
     );
   }
 
-  /// Application card widget
+  /// PHASE 1: Enhanced Application card widget - Now tappable with better visual design
   Widget _buildApplicationCard(Map<String, dynamic> application) {
     final status = application['application_status']?.toString() ?? 'submitted';
-    final appliedDate = application['application_date']?.toString() ?? '';
+    final appliedDate = application['applied_at']?.toString() ??
+        application['application_date']?.toString() ??
+        '';
     final jobTitle = application['job_title']?.toString() ?? 'Unknown Job';
     final companyName =
         application['company_name']?.toString() ?? 'Unknown Company';
+    final location = application['location']?.toString() ?? '';
+    final employmentType = application['employment_type']?.toString() ?? '';
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
+      child: Material(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+        elevation: 2,
+        shadowColor: Colors.black.withOpacity(0.1),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(12),
+          onTap: () => _showApplicationDetails(application),
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: Colors.grey.withOpacity(0.1),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header Row: Job Title + Status
+                Row(
                   children: [
-                    Text(
-                      jobTitle,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.black87,
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            jobTitle,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.black87,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            companyName,
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey[600],
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 4),
+                    _buildStatusChip(status),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // Job Details Row
+                if (location.isNotEmpty || employmentType.isNotEmpty)
+                  Row(
+                    children: [
+                      if (location.isNotEmpty) ...[
+                        Icon(Icons.location_on,
+                            size: 16, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          location,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        if (employmentType.isNotEmpty) ...[
+                          const SizedBox(width: 16),
+                          Container(
+                            width: 4,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.grey[400],
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                        ],
+                      ],
+                      if (employmentType.isNotEmpty) ...[
+                        Icon(Icons.work_outline,
+                            size: 16, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          employmentType,
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+
+                const SizedBox(height: 12),
+
+                // Bottom Row: Applied Date + Tap Indicator
+                Row(
+                  children: [
+                    Icon(Icons.calendar_today,
+                        size: 16, color: Colors.grey[600]),
+                    const SizedBox(width: 4),
                     Text(
-                      companyName,
+                      'Applied: ${_formatDate(appliedDate)}',
                       style: TextStyle(
-                        fontSize: 14,
+                        fontSize: 12,
                         color: Colors.grey[600],
                       ),
                     ),
+                    const Spacer(),
+                    // Tap indicator
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'View Details',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: primaryColor,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          Icons.arrow_forward_ios,
+                          size: 12,
+                          color: primaryColor,
+                        ),
+                      ],
+                    ),
                   ],
                 ),
-              ),
-              _buildStatusChip(status),
-            ],
+              ],
+            ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Icon(Icons.calendar_today, size: 16, color: Colors.grey[600]),
-              const SizedBox(width: 4),
-              Text(
-                'Applied: $appliedDate',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -764,6 +849,54 @@ class _CandidateApplicationsScreenState
       default:
         return filter;
     }
+  }
+
+  /// PHASE 1: Date formatting helper
+  String _formatDate(String dateStr) {
+    try {
+      if (dateStr.isEmpty) return 'Unknown';
+
+      final date = DateTime.parse(dateStr);
+      final now = DateTime.now();
+      final difference = now.difference(date);
+
+      if (difference.inDays == 0) {
+        return 'Today';
+      } else if (difference.inDays == 1) {
+        return 'Yesterday';
+      } else if (difference.inDays < 7) {
+        return '${difference.inDays} days ago';
+      } else {
+        return '${date.day}/${date.month}/${date.year}';
+      }
+    } catch (e) {
+      return dateStr;
+    }
+  }
+
+  /// PHASE 1: Show application details modal (basic structure)
+  void _showApplicationDetails(Map<String, dynamic> application) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => ApplicationDetailsModal(
+        application: application,
+        onWithdraw: () => _handleWithdrawApplication(application),
+      ),
+    );
+  }
+
+  /// PHASE 1: Handle withdraw application (placeholder for Phase 4)
+  Future<void> _handleWithdrawApplication(
+      Map<String, dynamic> application) async {
+    // Will be implemented in Phase 4
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Withdraw functionality coming in Phase 4!'),
+        backgroundColor: Colors.orange,
+      ),
+    );
   }
 }
 

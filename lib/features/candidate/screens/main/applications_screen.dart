@@ -38,6 +38,8 @@ class _CandidateApplicationsScreenState
   int _currentPage = 1;
   bool _hasMoreData = false;
 
+  String? _withdrawalReason;
+
   // Controllers
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
@@ -1073,11 +1075,19 @@ class _CandidateApplicationsScreenState
         );
       },
     ).then((result) {
+      // Handle the case where user cancels (returns false)
+      if (result == false || result == null) {
+        return false;
+      }
+
+      // Handle the case where user confirms withdrawal (returns Map)
       if (result is Map && result['withdraw'] == true) {
         // Store the reason for the actual withdrawal
-        _withdrawalReason = result['reason'];
+        _withdrawalReason = result['reason'] as String?;
         return true;
       }
+
+      // Fallback for any other case
       return false;
     });
   }

@@ -473,6 +473,8 @@ class _CandidateApplicationsScreenState
           _getFilterCount('interview_scheduled')),
       _FilterItem('hired', 'Offered', _getFilterCount('hired')),
       _FilterItem('rejected', 'Rejected', _getFilterCount('rejected')),
+      _FilterItem('withdrawn', 'Withdrawn',
+          _getFilterCount('withdrawn')), // ADD THIS LINE
     ];
 
     return Container(

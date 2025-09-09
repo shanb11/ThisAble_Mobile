@@ -903,12 +903,12 @@ class _CandidateApplicationsScreenState
     }
   }
 
-  // Show withdraw confirmation dialog
-  Future<bool?> _showWithdrawConfirmationDialog(
+// STEP 1: Change the method signature to allow dynamic returns
+  Future<dynamic> _showWithdrawConfirmationDialog(
       Map<String, dynamic> application) async {
     final TextEditingController reasonController = TextEditingController();
 
-    return showDialog<bool>(
+    return showDialog<dynamic>(
       context: context,
       barrierDismissible: false,
       builder: (BuildContext context) {

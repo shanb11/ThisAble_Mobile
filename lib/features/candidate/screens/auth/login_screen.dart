@@ -15,6 +15,11 @@ import '../../../../core/services/google_signin_web_service.dart';
 import '../../../../core/services/google_signin_mobile_service.dart';
 import '../../../../core/services/google_signin_controller.dart';
 
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+import '../../../../config/api_endpoints.dart';
+import '../../../../config/dynamic_api_config.dart';
+
 /// Login Screen - Mobile version of frontend/candidate/login.php
 /// Exact replica of your web login page with split-screen design
 class LoginScreen extends StatefulWidget {
@@ -676,134 +681,96 @@ class _LoginScreenState extends State<LoginScreen> {
       builder: (context) => const SelectionModal(),
     );
   }
-// test codes
-/*
-  // ADD THESE TEST METHODS TO YOUR _LoginScreenState CLASS
-  // (Add them at the end of the class, before the final closing brace)
+// SIMPLE HTTP TEST - Add this to your login_screen.dart
+// This version uses your existing imports and methods
 
-  /// Test method for web Google Sign-In service initialization
-  void _testWebGoogleSignIn() async {
-    // Only test on web platform
-    if (!PlatformUtils.isWeb) {
-      print('⚠️ Skipping web Google Sign-In test - not on web platform');
-      return;
-    }
+  void _testBasicHttpCall() async {
+    print('🔍 === BASIC HTTP TEST START ===');
+
+    setState(() {
+      _isLoading = true;
+    });
 
     try {
-      print('\n🔧 TESTING WEB GOOGLE SIGN-IN SERVICE 🔧');
+      // Use your existing API service method to get the URL
+      print('🔍 Step 1: Getting base URL...');
 
-      // Get the web service instance
-      final webService = GoogleSignInWebService.instance;
+      // Test your basic API connectivity first
+      final testUrl = 'http://localhost/ThisAble/api/test.php';
+      print('🔍 Testing basic URL: $testUrl');
 
-      // Initialize the service
-      print('🔄 Initializing web service...');
-      await webService.initialize();
-      print('✅ Web service initialized');
+      try {
+        final response = await http.get(
+          Uri.parse(testUrl),
+          headers: {'Accept': 'application/json'},
+        ).timeout(const Duration(seconds: 10));
 
-      // Check current state
-      print('📊 Current state:');
-      print('  - Is signed in: ${webService.isSignedIn}');
-      print('  - Current user: ${webService.currentUser?.email ?? 'None'}');
-
-      print('🔧 WEB GOOGLE SIGN-IN SERVICE TEST COMPLETE 🔧\n');
-    } catch (e) {
-      print('❌ Web service test failed: $e');
-    }
-  }
-
-  /// Test method for full sign-in flow (optional - for later testing)
-  void _testWebSignInFlow() async {
-    if (!PlatformUtils.isWeb) {
-      print('⚠️ Web sign-in test only available on web platform');
-      return;
-    }
-
-    try {
-      print('\n🚀 TESTING WEB SIGN-IN FLOW 🚀');
-
-      final webService = GoogleSignInWebService.instance;
-
-      // Attempt sign-in
-      final result = await webService.signIn();
-
-      print('📊 Sign-in result:');
-      print('  - Success: ${result.success}');
-      print('  - Type: ${result.type}');
-      print('  - Account: ${result.account?.email ?? 'None'}');
-      print('  - Has idToken: ${result.authentication?.idToken != null}');
-      print(
-          '  - Has accessToken: ${result.authentication?.accessToken != null}');
-
-      if (result.success && result.authentication?.idToken != null) {
-        print('✅ SUCCESS: Web Google Sign-In completed with idToken!');
-        print(
-            '🔑 idToken preview: ${result.authentication!.idToken!.substring(0, 50)}...');
-      } else {
-        print('❌ FAILED: ${result.error ?? 'Unknown error'}');
+        print('✅ Basic test successful: ${response.statusCode}');
+        print('✅ Response: ${response.body.substring(0, 100)}...');
+      } catch (e) {
+        print('❌ Basic test failed: $e');
+        setState(() => _isLoading = false);
+        return;
       }
 
-      print('🚀 WEB SIGN-IN FLOW TEST COMPLETE 🚀\n');
-    } catch (e) {
-      print('❌ Web sign-in flow test failed: $e');
-    }
-  }
+      // Test POST to your google endpoint
+      print('🔍 Step 2: Testing POST to google endpoint...');
 
-  // Add this method to your LoginScreen class for testing
-  void _testMobileGoogleSignIn() async {
-    try {
-      print('\n📱 TESTING MOBILE GOOGLE SIGN-IN SERVICE 📱');
+      final googleUrl = 'http://localhost/ThisAble/api/auth/google.php';
+      print('🔍 POST URL: $googleUrl');
 
-      // Get the mobile service instance
-      final mobileService = GoogleSignInMobileService.instance;
+      final testBody = {'action': 'test', 'debug': 'flutter_test'};
 
-      // Initialize the service
-      print('🔄 Initializing mobile service...');
-      await mobileService.initialize();
-      print('✅ Mobile service initialized');
+      print('🔍 Request body: $testBody');
+      print('🔍 Making POST request...');
 
-      // Check current state
-      print('📊 Current state:');
-      print('  - Platform: ${PlatformUtils.platformName}');
-      print('  - Is mobile platform: ${PlatformUtils.isMobile}');
-      print('  - Is signed in: ${mobileService.isSignedIn}');
-      print('  - Current user: ${mobileService.currentUser?.email ?? 'None'}');
+      try {
+        final postResponse = await http
+            .post(
+              Uri.parse(googleUrl),
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: json.encode(testBody),
+            )
+            .timeout(const Duration(seconds: 15));
 
-      print('📱 MOBILE GOOGLE SIGN-IN SERVICE TEST COMPLETE 📱\n');
-    } catch (e) {
-      print('❌ Mobile service test failed: $e');
-    }
-  }
+        print('✅ POST request completed!');
+        print('✅ Status: ${postResponse.statusCode}');
+        print('✅ Response: ${postResponse.body}');
 
-// Add this to test actual mobile sign-in (call this from a button press)
-  void _testMobileSignInFlow() async {
-    try {
-      print('\n🚀 TESTING MOBILE SIGN-IN FLOW 🚀');
+        // Show success message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ HTTP test successful!'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        print('❌ POST request failed: $e');
+        print('❌ Error type: ${e.runtimeType}');
 
-      final mobileService = GoogleSignInMobileService.instance;
-
-      // Attempt sign-in
-      final result = await mobileService.signIn();
-
-      print('📊 Mobile sign-in result:');
-      print('  - Success: ${result.success}');
-      print('  - Type: ${result.type}');
-      print('  - Account: ${result.account?.email ?? 'None'}');
-      print('  - Has idToken: ${result.authentication?.idToken != null}');
-      print(
-          '  - Has accessToken: ${result.authentication?.accessToken != null}');
-
-      if (result.success && result.authentication?.idToken != null) {
-        print('✅ SUCCESS: Mobile Google Sign-In completed with idToken!');
-        print(
-            '🔑 idToken preview: ${result.authentication!.idToken!.substring(0, 50)}...');
-      } else {
-        print('❌ FAILED: ${result.error ?? 'Unknown error'}');
+        // Show error message
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('❌ HTTP test failed: $e'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
       }
-
-      print('🚀 MOBILE SIGN-IN FLOW TEST COMPLETE 🚀\n');
     } catch (e) {
-      print('❌ Mobile sign-in flow test failed: $e');
+      print('❌ Test failed: $e');
+    } finally {
+      setState(() {
+        _isLoading = false;
+      });
     }
+
+    print('🔍 === BASIC HTTP TEST COMPLETE ===');
   }
-  */
 }

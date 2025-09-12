@@ -592,15 +592,17 @@ class _HomePageState extends State<HomePage> {
         'color': accentColor,
       },
       {
-        'title': 'Interviews',
-        'value': _statsData['interviews_count']?.toString() ?? '0',
+        'title': 'Scheduled Interviews', // ← CHANGED
+        'value': _statsData['interview_scheduled_count']?.toString() ??
+            '0', // ← CHANGED
         'icon': Icons.calendar_today,
         'color': AppColors.infoBlue,
       },
       {
-        'title': 'Profile Views',
-        'value': _statsData['profile_views']?.toString() ?? '0',
-        'icon': Icons.visibility,
+        'title': 'Notifications', // ← CHANGED
+        'value':
+            _statsData['notifications_count']?.toString() ?? '0', // ← CHANGED
+        'icon': Icons.notifications, // ← CHANGED
         'color': const Color(0xFFF06292),
       },
     ];
@@ -1302,10 +1304,14 @@ class _HomePageState extends State<HomePage> {
           'You have applied to ${_statsData['applications_count'] ?? 0} jobs. Keep applying to increase your chances!',
       'Jobs Saved':
           'You have saved ${_statsData['saved_jobs_count'] ?? 0} jobs. Save interesting positions to apply later.',
-      'Interviews':
-          'You have ${_statsData['interviews_count'] ?? 0} interviews. Good luck!',
-      'Profile Views':
-          'Your profile has been viewed ${_statsData['profile_views'] ?? 0} times. Great visibility!'
+      // CHANGED: "Interviews" → "Scheduled Interviews" to match new stat name
+      // CHANGED: interviews_count → interview_scheduled_count to match new data source
+      'Scheduled Interviews':
+          'You have ${_statsData['interview_scheduled_count'] ?? 0} scheduled interviews. Good luck!',
+      // CHANGED: "Profile Views" → "Notifications" to match new stat name
+      // CHANGED: profile_views → notifications_count to match new data source
+      'Notifications':
+          'You have ${_statsData['notifications_count'] ?? 0} new notifications. Stay updated!'
     };
 
     showDialog(

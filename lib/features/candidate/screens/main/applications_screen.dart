@@ -157,7 +157,6 @@ class _CandidateApplicationsScreenState
     }
   }
 
-  /// Load application statistics
   Future<void> _loadApplicationStats() async {
     if (_isDisposed) return;
 
@@ -165,12 +164,8 @@ class _CandidateApplicationsScreenState
       final response = await ApiService.getDashboardHome();
       if (response['success'] == true && !_isDisposed) {
         _safeSetState(() {
-          _statsData = response['data']['stats'] ?? {};
-          _isLoadingStats = false;
-        });
-      } else {
-        _safeSetState(() {
-          _statsData = {};
+          // Use safe type conversion here too
+          _statsData = _convertStatsData(response['data']['stats'] ?? {});
           _isLoadingStats = false;
         });
       }
@@ -183,6 +178,24 @@ class _CandidateApplicationsScreenState
         });
       }
     }
+  }
+
+  // Add this helper method to applications screen
+  Map<String, dynamic> _convertStatsData(Map<String, dynamic> rawStats) {
+    Map<String, dynamic> convertedStats = {};
+
+    rawStats.forEach((key, value) {
+      if (value is String) {
+        // Try to convert string to int
+        convertedStats[key] = int.tryParse(value) ?? 0;
+      } else if (value is int) {
+        convertedStats[key] = value;
+      } else {
+        convertedStats[key] = 0;
+      }
+    });
+
+    return convertedStats;
   }
 
   /// Load more applications (pagination)

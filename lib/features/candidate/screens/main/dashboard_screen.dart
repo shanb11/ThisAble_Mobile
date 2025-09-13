@@ -7,6 +7,7 @@ import 'applications_screen.dart';
 import 'jobs_screen.dart';
 import 'settings_screen.dart';
 import '../../../../../screens/test_api_screen.dart';
+import 'dart:convert'; // Add this if it's not already there
 
 class CandidateDashboardScreen extends StatefulWidget {
   const CandidateDashboardScreen({super.key});
@@ -165,11 +166,41 @@ class _HomePageState extends State<HomePage> {
         });
 
         print('🔧 [Dashboard] Stats loaded successfully');
+      } else {
+        // ✅ ADD THIS ERROR HANDLING BLOCK
+        print('🚨 [Dashboard] API failed: ${response['message']}');
+
+        if (mounted) {
+          setState(() {
+            _statsData = {}; // Keep empty for now
+            _isLoadingStats = false;
+          });
+
+          // Show the actual error to user
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                  'Dashboard error: ${response['message'] ?? 'Unknown error'}'),
+              backgroundColor: Colors.red,
+              duration: Duration(seconds: 5),
+            ),
+          );
+        }
       }
     } catch (e) {
-      print('🔧 [Dashboard] Error loading stats: $e');
+      print('🚨 [Dashboard] Error loading stats: $e');
       if (mounted) {
-        setState(() => _isLoadingStats = false);
+        setState(() {
+          _statsData = {};
+          _isLoadingStats = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Network error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
       }
     }
   }
@@ -217,12 +248,35 @@ class _HomePageState extends State<HomePage> {
 
       if (response['success'] && mounted) {
         final data = response['data'];
-        final interviews = data['upcoming_interviews'] ?? [];
+
+        // Fix: Handle both List and String types safely
+        var interviewsData = data['upcoming_interviews'];
+        List<dynamic> interviews = [];
+
+        if (interviewsData is List) {
+          interviews = interviewsData;
+        } else if (interviewsData is String) {
+          // If it's a string, it might be empty or JSON
+          if (interviewsData.isNotEmpty) {
+            try {
+              interviews = json.decode(interviewsData);
+              if (interviews is! List) interviews = [];
+            } catch (e) {
+              print(
+                  '🔧 [Dashboard] Could not parse interviews string: $interviewsData');
+              interviews = [];
+            }
+          }
+        } else if (interviewsData == null) {
+          interviews = [];
+        }
 
         setState(() {
           _upcomingInterviews = interviews;
           _isLoadingInterviews = false;
         });
+
+        print('🔧 [Dashboard] Interviews loaded: ${interviews.length}');
       } else {
         if (mounted) {
           setState(() {
@@ -581,28 +635,26 @@ class _HomePageState extends State<HomePage> {
     final stats = [
       {
         'title': 'Jobs Applied',
-        'value': _statsData['applications_count']?.toString() ?? '0',
+        'value': _safeGetStatValue(_statsData, 'applications_count'),
         'icon': Icons.send,
         'color': primaryColor,
       },
       {
         'title': 'Jobs Saved',
-        'value': _statsData['saved_jobs_count']?.toString() ?? '0',
+        'value': _safeGetStatValue(_statsData, 'saved_jobs_count'),
         'icon': Icons.bookmark,
         'color': accentColor,
       },
       {
-        'title': 'Scheduled Interviews', // ← CHANGED
-        'value': _statsData['interview_scheduled_count']?.toString() ??
-            '0', // ← CHANGED
+        'title': 'Scheduled Interviews',
+        'value': _safeGetStatValue(_statsData, 'interview_scheduled_count'),
         'icon': Icons.calendar_today,
         'color': AppColors.infoBlue,
       },
       {
-        'title': 'Notifications', // ← CHANGED
-        'value':
-            _statsData['notifications_count']?.toString() ?? '0', // ← CHANGED
-        'icon': Icons.notifications, // ← CHANGED
+        'title': 'Notifications',
+        'value': _safeGetStatValue(_statsData, 'notifications_count'),
+        'icon': Icons.notifications,
         'color': const Color(0xFFF06292),
       },
     ];
@@ -1327,5 +1379,18 @@ class _HomePageState extends State<HomePage> {
         ],
       ),
     );
+  }
+
+  // Add this helper method to handle type conversion safely
+  String _safeGetStatValue(Map<String, dynamic> data, String key) {
+    final value = data[key];
+    if (value == null) return '0';
+
+    // Handle both int and String types from API
+    if (value is int) return value.toString();
+    if (value is String) return value;
+
+    // Fallback for other types
+    return value.toString();
   }
 }

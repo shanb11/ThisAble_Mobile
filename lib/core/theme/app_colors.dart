@@ -70,4 +70,6 @@ class AppColors {
 
   // Other colors
   static const Color progressBackground = Color(0xFFE1E1E1);
+  static const Color accentTeal = Color(0xFF26A69A);
+  static const Color warningOrange = Color(0xFFFF9800);
 }

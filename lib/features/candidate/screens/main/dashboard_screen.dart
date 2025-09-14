@@ -121,30 +121,83 @@ class _HomePageState extends State<HomePage> {
     _loadDashboardData();
   }
 
-  // Keep existing data loading methods
   Future<void> _loadDashboardData() async {
-    if (_isLoadingDashboardData) {
-      print('🔧 [Dashboard] Already loading data, skipping...');
-      return;
-    }
+    print('📊 [Dashboard] Loading dashboard data...');
 
     setState(() {
-      _isLoadingDashboardData = true;
+      _isLoadingStats = true;
     });
 
     try {
-      print('🔧 [Dashboard] Starting coordinated data load...');
-      await _loadDashboardStats();
-      await _loadRecentApplications();
-      await _loadUpcomingInterviews();
-      print('🔧 [Dashboard] All data loaded successfully');
-    } catch (e) {
-      print('🔧 [Dashboard] Error during data loading: $e');
-    } finally {
-      setState(() {
-        _isLoadingDashboardData = false;
-      });
+      final response = await ApiService.getDashboardHome();
+      print('📊 [Dashboard] Full API response: $response');
+
+      // Check if response exists and has success field
+      if (response != null && response['success'] == true) {
+        final data = response['data'];
+        print('📊 [Dashboard] Response data: $data');
+
+        if (data != null && data['stats'] != null) {
+          final stats = data['stats'];
+          print('📊 [Dashboard] Stats received: $stats');
+
+          // DIRECT ASSIGNMENT - No type conversion needed since API returns integers
+          setState(() {
+            _statsData = {
+              'applications_count': stats['applications_count'] ?? 0,
+              'saved_jobs_count': stats['saved_jobs_count'] ?? 0,
+              'interview_scheduled_count':
+                  stats['interview_scheduled_count'] ?? 0,
+              'notifications_count': stats['notifications_count'] ?? 0,
+            };
+
+            // Also load other data if available
+            _recentApplications =
+                List<dynamic>.from(data['recent_applications'] ?? []);
+            _upcomingInterviews =
+                List<dynamic>.from(data['upcoming_interviews'] ?? []);
+
+            _isLoadingStats = false;
+          });
+
+          print('✅ [Dashboard] Stats loaded successfully: $_statsData');
+        } else {
+          print('❌ [Dashboard] No stats data in response');
+          _setEmptyStats();
+        }
+      } else {
+        print('❌ [Dashboard] API call failed or returned success=false');
+        print('❌ [Dashboard] Response: $response');
+        _setEmptyStats();
+      }
+    } catch (e, stackTrace) {
+      print('❌ [Dashboard] Exception loading data: $e');
+      print('❌ [Dashboard] Stack trace: $stackTrace');
+      _setEmptyStats();
     }
+  }
+
+// Helper method to set empty stats
+  void _setEmptyStats() {
+    setState(() {
+      _statsData = {
+        'applications_count': 0,
+        'saved_jobs_count': 0,
+        'interview_scheduled_count': 0,
+        'notifications_count': 0,
+      };
+      _recentApplications = [];
+      _upcomingInterviews = [];
+      _isLoadingStats = false;
+    });
+  }
+
+// Add this helper method to your class
+  int _parseIntSafely(dynamic value) {
+    if (value == null) return 0;
+    if (value is int) return value;
+    if (value is String) return int.tryParse(value) ?? 0;
+    return 0;
   }
 
   Future<void> _loadDashboardStats() async {
@@ -631,31 +684,33 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
+  // ALSO UPDATE YOUR STATS GRID BUILDER:
   Widget _buildStatsGrid() {
     final stats = [
       {
         'title': 'Jobs Applied',
-        'value': _safeGetStatValue(_statsData, 'applications_count'),
+        'value':
+            '${_statsData['applications_count'] ?? 0}', // Convert to string for display
         'icon': Icons.send,
-        'color': primaryColor,
+        'color': Theme.of(context).primaryColor,
       },
       {
         'title': 'Jobs Saved',
-        'value': _safeGetStatValue(_statsData, 'saved_jobs_count'),
+        'value': '${_statsData['saved_jobs_count'] ?? 0}',
         'icon': Icons.bookmark,
-        'color': accentColor,
+        'color': AppColors.accentTeal,
       },
       {
         'title': 'Scheduled Interviews',
-        'value': _safeGetStatValue(_statsData, 'interview_scheduled_count'),
+        'value': '${_statsData['interview_scheduled_count'] ?? 0}',
         'icon': Icons.calendar_today,
         'color': AppColors.infoBlue,
       },
       {
         'title': 'Notifications',
-        'value': _safeGetStatValue(_statsData, 'notifications_count'),
+        'value': '${_statsData['notifications_count'] ?? 0}',
         'icon': Icons.notifications,
-        'color': const Color(0xFFF06292),
+        'color': AppColors.warningOrange,
       },
     ];
 
@@ -671,58 +726,55 @@ class _HomePageState extends State<HomePage> {
       itemCount: stats.length,
       itemBuilder: (context, index) {
         final stat = stats[index];
-        return GestureDetector(
-          onTap: () => _showStatDetails(stat['title'] as String),
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppColors.cardBackground,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: AppColors.shadowLight,
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: (stat['color'] as Color).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      stat['icon'] as IconData,
-                      color: stat['color'] as Color,
-                      size: 20,
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    stat['value'] as String,
-                    style: const TextStyle(
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    stat['title'] as String,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.cardBackground,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: AppColors.shadowLight,
+                blurRadius: 10,
+                offset: const Offset(0, 2),
               ),
-            ),
+            ],
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: (stat['color'] as Color).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  stat['icon'] as IconData,
+                  color: stat['color'] as Color,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                stat['value'] as String,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                stat['title'] as String,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w500,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ],
           ),
         );
       },

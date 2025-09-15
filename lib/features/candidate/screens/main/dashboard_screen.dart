@@ -175,6 +175,86 @@ class _HomePageState extends State<HomePage> {
       print('❌ [Dashboard] Stack trace: $stackTrace');
       _setEmptyStats();
     }
+    print('🔍 [DEBUG] Starting _loadDashboardData...');
+
+    setState(() {
+      _isLoadingStats = true;
+    });
+
+    try {
+      print('🔍 [DEBUG] Calling ApiService.getDashboardHome()...');
+      final response = await ApiService.getDashboardHome();
+
+      print('🔍 [DEBUG] === FULL API RESPONSE ===');
+      print('🔍 [DEBUG] Response type: ${response.runtimeType}');
+      print('🔍 [DEBUG] Response keys: ${response.keys.toList()}');
+      print('🔍 [DEBUG] Success: ${response['success']}');
+      print('🔍 [DEBUG] Message: ${response['message']}');
+      print('🔍 [DEBUG] Data: ${response['data']}');
+
+      if (response['data'] != null) {
+        final data = response['data'];
+        print('🔍 [DEBUG] Data type: ${data.runtimeType}');
+        print('🔍 [DEBUG] Data keys: ${data.keys.toList()}');
+
+        if (data['stats'] != null) {
+          final stats = data['stats'];
+          print('🔍 [DEBUG] === STATS BREAKDOWN ===');
+          print('🔍 [DEBUG] Stats type: ${stats.runtimeType}');
+          print('🔍 [DEBUG] Stats keys: ${stats.keys.toList()}');
+          print(
+              '🔍 [DEBUG] applications_count: ${stats['applications_count']} (${stats['applications_count'].runtimeType})');
+          print(
+              '🔍 [DEBUG] saved_jobs_count: ${stats['saved_jobs_count']} (${stats['saved_jobs_count'].runtimeType})');
+          print(
+              '🔍 [DEBUG] interview_scheduled_count: ${stats['interview_scheduled_count']} (${stats['interview_scheduled_count'].runtimeType})');
+          print(
+              '🔍 [DEBUG] notifications_count: ${stats['notifications_count']} (${stats['notifications_count'].runtimeType})');
+        } else {
+          print('🔍 [DEBUG] No stats data in response!');
+        }
+      } else {
+        print('🔍 [DEBUG] No data in response!');
+      }
+
+      // Check if response exists and has success field
+      if (response != null && response['success'] == true) {
+        final data = response['data'];
+
+        if (data != null && data['stats'] != null) {
+          final stats = data['stats'];
+
+          setState(() {
+            _statsData = {
+              'applications_count': stats['applications_count'] ?? 0,
+              'saved_jobs_count': stats['saved_jobs_count'] ?? 0,
+              'interview_scheduled_count':
+                  stats['interview_scheduled_count'] ?? 0,
+              'notifications_count': stats['notifications_count'] ?? 0,
+            };
+
+            _recentApplications =
+                List<dynamic>.from(data['recent_applications'] ?? []);
+            _upcomingInterviews =
+                List<dynamic>.from(data['upcoming_interviews'] ?? []);
+            _isLoadingStats = false;
+          });
+
+          print('🔍 [DEBUG] === FINAL STATS SET ===');
+          print('🔍 [DEBUG] _statsData: $_statsData');
+        } else {
+          print('🔍 [DEBUG] No stats data, setting empty stats');
+          _setEmptyStats();
+        }
+      } else {
+        print('🔍 [DEBUG] API call failed or returned success=false');
+        _setEmptyStats();
+      }
+    } catch (e, stackTrace) {
+      print('🔍 [DEBUG] Exception in _loadDashboardData: $e');
+      print('🔍 [DEBUG] Stack trace: $stackTrace');
+      _setEmptyStats();
+    }
   }
 
 // Helper method to set empty stats

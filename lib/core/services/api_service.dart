@@ -788,7 +788,7 @@ class ApiService {
     try {
       print('🔧 [ApiService] Getting dashboard home data...');
 
-      // Check authentication
+      // Check authentication first (same as working APIs)
       final token = await getToken();
       if (token == null || token.isEmpty) {
         return {
@@ -798,11 +798,17 @@ class ApiService {
         };
       }
 
+      print('🔧 [ApiService] Using token: ${token.substring(0, 20)}...');
+
+      // Use the EXACT same pattern as getApplicationsList (which works)
       final uri = await _buildApiUri('candidate/get_dashboard_home.php');
-      final response = await http.get(uri,
-          headers: await _getHeaders(
-              includeAuth: true) // FIXED: Added includeAuth: true
-          );
+      print('🔧 [ApiService] Calling: $uri');
+
+      final response = await http.get(
+        uri,
+        headers:
+            await _getHeaders(includeAuth: true), // EXACT same as working APIs
+      );
 
       print(
           '🔧 [ApiService] Dashboard response status: ${response.statusCode}');

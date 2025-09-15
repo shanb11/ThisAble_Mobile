@@ -151,13 +151,14 @@ class _HomePageState extends State<HomePage> {
               'notifications_count': stats['notifications_count'] ?? 0,
             };
 
-            // Also load other data if available
             _recentApplications =
                 List<dynamic>.from(data['recent_applications'] ?? []);
             _upcomingInterviews =
                 List<dynamic>.from(data['upcoming_interviews'] ?? []);
 
-            _isLoadingStats = false;
+            _isLoadingStats = false; // ✅ Keep this
+            _isLoadingApplications = false; // 🚀 ADD this line
+            _isLoadingInterviews = false; // 🚀 ADD this line too
           });
 
           print('✅ [Dashboard] Stats loaded successfully: $_statsData');
@@ -268,7 +269,11 @@ class _HomePageState extends State<HomePage> {
       };
       _recentApplications = [];
       _upcomingInterviews = [];
+
+      // 🚀 FIX: Set ALL loading states to false
       _isLoadingStats = false;
+      _isLoadingApplications = false;
+      _isLoadingInterviews = false;
     });
   }
 

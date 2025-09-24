@@ -7,9 +7,10 @@ import '../../config/dynamic_api_config.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:math' as math;
 // Only add this import if you're on web
-import 'dart:html' as html;
 import 'network_discovery_service.dart';
-import 'dart:math' as math;
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 
 class ApiService {
   /// Add these methods anywhere in your ApiService class:
@@ -1736,6 +1737,182 @@ class ApiService {
           'message': 'Failed to withdraw application: ${e.toString()}',
         };
       }
+    }
+  }
+
+  /// Enhanced file upload with better error handling
+  static Future<Map<String, dynamic>> uploadPwdIdFile({
+    required String pwdIdNumber,
+    required String pwdIdIssuedDate,
+    required String pwdIdIssuingLGU,
+    required File imageFile,
+  }) async {
+    // Legacy method for backwards compatibility - redirects to web-compatible version
+    return uploadPwdIdFileWeb(
+      pwdIdNumber: pwdIdNumber,
+      pwdIdIssuedDate: pwdIdIssuedDate,
+      pwdIdIssuingLGU: pwdIdIssuingLGU,
+      imageFile: imageFile,
+      imageBytes: null,
+      fileName: imageFile.path.split('/').last,
+    );
+  }
+
+  /// Alternative method for PWD verification with file upload (update existing method)
+  static Future<Map<String, dynamic>> verifyPwdIdWithUpload({
+    required String pwdIdNumber,
+    required String pwdIdIssuedDate,
+    required String pwdIdIssuingLGU,
+    File? imageFile,
+  }) async {
+    try {
+      final baseUrl = await DynamicApiConfig.getBaseUrl();
+      final url = '$baseUrl/candidate/pwd_verification.php';
+
+      if (imageFile != null) {
+        // Use multipart request for file upload
+        var request = http.MultipartRequest('POST', Uri.parse(url));
+
+        // Add headers
+        final token = await getToken();
+        if (token != null) {
+          request.headers['Authorization'] = 'Bearer $token';
+        }
+        request.headers['Accept'] = 'application/json';
+
+        // Add form fields
+        request.fields['action'] = 'verify';
+        request.fields['pwdIdNumber'] = pwdIdNumber;
+        request.fields['pwdIdIssuedDate'] = pwdIdIssuedDate;
+        request.fields['pwdIdIssuingLGU'] = pwdIdIssuingLGU;
+        request.fields['skipImage'] = 'false';
+
+        // Add file
+        var multipartFile = await http.MultipartFile.fromPath(
+          'pwdIdFile',
+          imageFile.path,
+        );
+        request.files.add(multipartFile);
+
+        // Send request
+        var streamedResponse = await request.send();
+        var response = await http.Response.fromStream(streamedResponse);
+
+        return _handleResponse(response);
+      } else {
+        // Use regular POST request without file
+        final response = await http.post(
+          Uri.parse(url),
+          headers: await _getHeaders(includeAuth: true),
+          body: json.encode({
+            'pwdIdNumber': pwdIdNumber,
+            'pwdIdIssuedDate': pwdIdIssuedDate,
+            'pwdIdIssuingLGU': pwdIdIssuingLGU,
+            'action': 'verify',
+            'skipImage': 'true',
+          }),
+        );
+
+        return _handleResponse(response);
+      }
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  /// Web-compatible PWD ID file upload - COMPLETE VERSION
+  static Future<Map<String, dynamic>> uploadPwdIdFileWeb({
+    required String pwdIdNumber,
+    required String pwdIdIssuedDate,
+    required String pwdIdIssuingLGU,
+    File? imageFile, // For mobile
+    Uint8List? imageBytes, // For web
+    required String fileName,
+  }) async {
+    try {
+      print('🔧 === WEB-COMPATIBLE PWD ID FILE UPLOAD ===');
+      print('🔧 Platform: ${kIsWeb ? "WEB" : "MOBILE"}');
+      print('🔧 PWD ID: $pwdIdNumber');
+      print('🔧 File name: $fileName');
+
+      if (kIsWeb) {
+        print('🔧 Using bytes (web): ${imageBytes?.length ?? 0} bytes');
+      } else {
+        print('🔧 Using file (mobile): ${imageFile?.path ?? "null"}');
+      }
+
+      // Get the upload URL
+      final baseUrl = await DynamicApiConfig.getBaseUrl();
+      final uploadUrl = '$baseUrl/candidate/upload_pwd_id.php';
+      print('🔧 Upload URL: $uploadUrl');
+
+      // Create multipart request
+      var request = http.MultipartRequest('POST', Uri.parse(uploadUrl));
+
+      // Add headers
+      final token = await getToken();
+      if (token != null) {
+        request.headers['Authorization'] = 'Bearer $token';
+      }
+      request.headers['Accept'] = 'application/json';
+
+      // Add form fields
+      request.fields['action'] = 'upload';
+      request.fields['pwdIdNumber'] = pwdIdNumber;
+      request.fields['pwdIdIssuedDate'] = pwdIdIssuedDate;
+      request.fields['pwdIdIssuingLGU'] = pwdIdIssuingLGU;
+
+      // Add file - platform specific
+      if (kIsWeb && imageBytes != null) {
+        // Web: use bytes
+        var multipartFile = http.MultipartFile.fromBytes(
+          'pwdIdFile',
+          imageBytes,
+          filename: fileName,
+        );
+        request.files.add(multipartFile);
+        print('🔧 Added file from bytes for web');
+      } else if (!kIsWeb && imageFile != null) {
+        // Mobile: use file path
+        var multipartFile = await http.MultipartFile.fromPath(
+          'pwdIdFile',
+          imageFile.path,
+          filename: fileName,
+        );
+        request.files.add(multipartFile);
+        print('🔧 Added file from path for mobile');
+      } else {
+        print('🔧 ❌ No valid file data provided');
+        return {
+          'success': false,
+          'message': 'No file data available for upload',
+        };
+      }
+
+      print('🔧 Sending multipart request...');
+
+      // Send request with timeout
+      var streamedResponse = await request.send().timeout(
+        const Duration(seconds: 30),
+        onTimeout: () {
+          throw Exception('Upload timeout after 30 seconds');
+        },
+      );
+
+      var response = await http.Response.fromStream(streamedResponse);
+
+      print('🔧 Response status: ${response.statusCode}');
+      print('🔧 Response body: ${response.body}');
+
+      // Handle response
+      return _handleResponse(response);
+    } catch (e, stackTrace) {
+      print('🔧 ❌ Upload error: $e');
+      print('🔧 Stack trace: $stackTrace');
+      return {
+        'success': false,
+        'message': 'Upload failed: $e',
+      };
     }
   }
 }

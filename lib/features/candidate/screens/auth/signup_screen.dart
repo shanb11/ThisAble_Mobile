@@ -9,6 +9,10 @@ import '../../../../config/constants.dart';
 import '../../../../core/utils/form_validators.dart';
 import '../../../../core/services/api_service.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:file_picker/file_picker.dart';
+import 'dart:io';
+import 'package:flutter/foundation.dart'; // Add this import for kIsWeb
+import 'dart:typed_data'; // Add this import for Uint8List
 
 /// Signup Screen - Mobile version of frontend/candidate/signup.php
 /// Complete 3-step signup process matching your web implementation
@@ -36,6 +40,12 @@ class _SignupScreenState extends State<SignupScreen> {
   // Form controllers for Step 3
   final _pwdIdController = TextEditingController();
   final _pwdIssuedDateController = TextEditingController();
+
+  File? _selectedPwdIdFile; // For mobile
+  Uint8List? _selectedPwdIdBytes; // For web
+  String? _selectedFileName; // For both platforms
+  bool _isUploading = false;
+  String? _uploadError;
 
   // Form state
   String? _selectedDisabilityType;
@@ -1172,11 +1182,133 @@ class _SignupScreenState extends State<SignupScreen> {
     );
   }
 
-  /// File upload section (temporarily disabled for Phase 1)
+  /// Web-compatible PWD ID file selection
+  void _selectPwdIdFile() async {
+    try {
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+        allowMultiple: false,
+        withData: kIsWeb, // Important: get bytes for web, file for mobile
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final pickedFile = result.files.first;
+
+        // Check file size (5MB limit)
+        if (pickedFile.size > 5 * 1024 * 1024) {
+          setState(() {
+            _uploadError = 'File size must be less than 5MB';
+          });
+          return;
+        }
+
+        if (kIsWeb) {
+          // Web platform: use bytes
+          if (pickedFile.bytes != null) {
+            setState(() {
+              _selectedPwdIdBytes = pickedFile.bytes;
+              _selectedFileName = pickedFile.name;
+              _selectedPwdIdFile = null; // Clear mobile file
+              _uploadError = null;
+            });
+          } else {
+            setState(() {
+              _uploadError = 'Failed to read file data';
+            });
+          }
+        } else {
+          // Mobile platform: use file path
+          if (pickedFile.path != null) {
+            final file = File(pickedFile.path!);
+            setState(() {
+              _selectedPwdIdFile = file;
+              _selectedFileName = pickedFile.name;
+              _selectedPwdIdBytes = null; // Clear web bytes
+              _uploadError = null;
+            });
+          } else {
+            setState(() {
+              _uploadError = 'Failed to access file path';
+            });
+          }
+        }
+      }
+    } catch (e) {
+      setState(() {
+        _uploadError = 'Failed to select file: $e';
+      });
+    }
+  }
+
+  /// Updated upload method with web compatibility
+  void _uploadPwdIdFile() async {
+    if (!(_selectedPwdIdFile != null || _selectedPwdIdBytes != null)) return;
+
+    setState(() {
+      _isUploading = true;
+      _uploadError = null;
+    });
+
+    try {
+      // Call API with platform-appropriate data
+      final result = await ApiService.uploadPwdIdFileWeb(
+        pwdIdNumber: _pwdIdController.text.trim(),
+        pwdIdIssuedDate: _pwdIssuedDateController.text.trim(),
+        pwdIdIssuingLGU: _selectedIssuingLGU!,
+        imageFile: _selectedPwdIdFile, // For mobile
+        imageBytes: _selectedPwdIdBytes, // For web
+        fileName: _selectedFileName ?? 'pwd_id_file',
+      );
+
+      setState(() {
+        _isUploading = false;
+      });
+
+      if (result['success']) {
+        setState(() {
+          _verificationStatus = 'success';
+          _verificationMessage = result['message'] ??
+              'PWD ID uploaded successfully for manual verification.';
+          _verificationComplete = true;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('PWD ID uploaded successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        setState(() {
+          _uploadError =
+              result['message'] ?? 'Upload failed. Please try again.';
+        });
+      }
+    } catch (e) {
+      setState(() {
+        _isUploading = false;
+        _uploadError =
+            'Network error. Please check your connection and try again.';
+      });
+    }
+  }
+
+  /// Updated file upload section with web compatibility
   Widget _buildFileUploadSection() {
+    // Only show upload section if verification failed or requires upload
+    if (_verificationStatus != 'warning' && _verificationStatus != 'error') {
+      return SizedBox.shrink();
+    }
+
+    // Check if file is selected (either mobile file or web bytes)
+    final hasFile = _selectedPwdIdFile != null || _selectedPwdIdBytes != null;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        const SizedBox(height: 20),
+
         // Section divider
         Row(
           children: [
@@ -1184,9 +1316,10 @@ class _SignupScreenState extends State<SignupScreen> {
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 15),
               child: Text(
-                'Manual Verification',
+                'Manual Verification Required',
                 style: GoogleFonts.inter(
                   fontSize: 14,
+                  fontWeight: FontWeight.w500,
                   color: Colors.grey[600],
                 ),
               ),
@@ -1195,43 +1328,199 @@ class _SignupScreenState extends State<SignupScreen> {
           ],
         ),
 
-        const SizedBox(height: 15),
+        const SizedBox(height: 20),
 
+        // Instructions
         Container(
           padding: const EdgeInsets.all(15),
           decoration: BoxDecoration(
-            border: Border.all(color: Colors.grey[300]!),
-            borderRadius: BorderRadius.circular(5),
-            color: Colors.grey[50],
+            color: Colors.blue[50],
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.blue[200]!),
           ),
-          child: Column(
+          child: Row(
             children: [
-              Icon(
-                Icons.upload_file,
-                size: 48,
-                color: Colors.grey[400],
-              ),
-              const SizedBox(height: 10),
-              Text(
-                'PWD ID Upload Coming Soon',
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                  color: Colors.grey[600],
+              Icon(Icons.info, color: Colors.blue[700], size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Please upload a clear photo of your PWD ID for manual verification.',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    color: Colors.blue[700],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 5),
-              Text(
-                'File upload will be available in Phase 2.\nFor now, you can complete registration without file upload.',
-                style: GoogleFonts.inter(
-                  fontSize: 12,
-                  color: Colors.grey[500],
-                ),
-                textAlign: TextAlign.center,
               ),
             ],
           ),
         ),
+
+        const SizedBox(height: 15),
+
+        // File upload area
+        GestureDetector(
+          onTap: _isUploading ? null : _selectPwdIdFile,
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              border: Border.all(
+                color: hasFile ? AppColors.primaryOrange : Colors.grey[300]!,
+                width: 2,
+                style: BorderStyle.solid,
+              ),
+              borderRadius: BorderRadius.circular(10),
+              color: hasFile ? Colors.green[50] : Colors.grey[50],
+            ),
+            child: Column(
+              children: [
+                if (!hasFile) ...[
+                  Icon(
+                    Icons.cloud_upload_outlined,
+                    size: 48,
+                    color: _isUploading
+                        ? Colors.grey[400]
+                        : AppColors.primaryOrange,
+                  ),
+                  const SizedBox(height: 15),
+                  Text(
+                    _isUploading ? 'Uploading...' : 'Tap to Upload PWD ID',
+                    style: GoogleFonts.inter(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                      color: _isUploading
+                          ? Colors.grey[600]
+                          : AppColors.primaryOrange,
+                    ),
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    'Supports: JPG, PNG, PDF (Max 5MB)',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: Colors.grey[500],
+                    ),
+                  ),
+                ] else ...[
+                  Icon(
+                    Icons.check_circle,
+                    size: 48,
+                    color: Colors.green[600],
+                  ),
+                  const SizedBox(height: 15),
+                  Text(
+                    'File Selected: ${_selectedFileName ?? 'Unknown file'}',
+                    style: GoogleFonts.inter(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.green[700],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 5),
+                  Text(
+                    'Platform: ${kIsWeb ? 'Web Browser' : 'Mobile App'}',
+                    style: GoogleFonts.inter(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      TextButton.icon(
+                        onPressed: _selectPwdIdFile,
+                        icon: Icon(Icons.edit,
+                            size: 16, color: AppColors.primaryOrange),
+                        label: Text(
+                          'Change File',
+                          style: GoogleFonts.inter(
+                            color: AppColors.primaryOrange,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      TextButton.icon(
+                        onPressed: () {
+                          setState(() {
+                            _selectedPwdIdFile = null;
+                            _selectedPwdIdBytes = null;
+                            _selectedFileName = null;
+                            _uploadError = null;
+                          });
+                        },
+                        icon: Icon(Icons.delete,
+                            size: 16, color: Colors.red[600]),
+                        label: Text(
+                          'Remove',
+                          style: GoogleFonts.inter(
+                            color: Colors.red[600],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+
+                // Upload progress
+                if (_isUploading) ...[
+                  const SizedBox(height: 15),
+                  LinearProgressIndicator(
+                    backgroundColor: Colors.grey[300],
+                    valueColor:
+                        AlwaysStoppedAnimation<Color>(AppColors.primaryOrange),
+                  ),
+                ],
+
+                // Upload error
+                if (_uploadError != null) ...[
+                  const SizedBox(height: 15),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.red[50],
+                      borderRadius: BorderRadius.circular(5),
+                      border: Border.all(color: Colors.red[200]!),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.error, color: Colors.red[700], size: 16),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _uploadError!,
+                            style: GoogleFonts.inter(
+                              fontSize: 12,
+                              color: Colors.red[700],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+
+        const SizedBox(height: 20),
+
+        // Upload button
+        if (hasFile && !_isUploading)
+          SizedBox(
+            width: double.infinity,
+            child: CustomButton(
+              text: 'Upload for Verification',
+              onPressed: _uploadPwdIdFile,
+              type: CustomButtonType.secondary,
+            ),
+          ),
+
+        const SizedBox(height: 15),
       ],
     );
   }
@@ -1831,11 +2120,12 @@ class _SignupScreenState extends State<SignupScreen> {
 
   /// Check if sign up can be completed (Phase 1: no file required)
   bool _canCompleteSignup() {
-    // For Phase 1, allow completion after verification attempt
     return _verificationComplete ||
         _verificationStatus == 'success' ||
-        _verificationStatus == 'warning' ||
-        _verificationStatus == 'error';
+        (_verificationStatus == 'warning' &&
+            (_selectedPwdIdFile != null || _selectedPwdIdBytes != null)) ||
+        (_verificationStatus == 'error' &&
+            (_selectedPwdIdFile != null || _selectedPwdIdBytes != null));
   }
 
   // ===========================================

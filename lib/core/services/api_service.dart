@@ -1040,8 +1040,8 @@ class ApiService {
       return {'success': false, 'message': 'Error: $e'};
     }
   }
-// ==================== LANDING PAGE APIs ====================
-// ADD these methods to your existing ApiService class
+  // ==================== LANDING PAGE APIs ====================
+  // ADD these methods to your existing ApiService class
 
   /// Landing page jobs - FIXED: Same async pattern
   static Future<Map<String, dynamic>> getLandingJobs({
@@ -1158,7 +1158,7 @@ class ApiService {
     }
   }
 
-// Also add this initialization method at the top of your ApiService class:
+  // Also add this initialization method at the top of your ApiService class:
 
   /// Initialize API service with auto-discovery (ADD THIS METHOD)
   static Future<bool> initialize() async {
@@ -1180,7 +1180,7 @@ class ApiService {
     }
   }
 
-// Add these helper methods for network management:
+  // Add these helper methods for network management:
 
   /// Refresh IP configuration (call when changing locations)
   static Future<bool> refreshNetworkConfig() async {
@@ -1472,7 +1472,7 @@ class ApiService {
     print('🔍 === DEBUG TEST COMPLETE ===');
   }
 
-// Add this to your ApiService class for easy testing
+  // Add this to your ApiService class for easy testing
   static Future<Map<String, dynamic>> testWebGoogleSignIn({
     required String idToken,
     String? accessToken,
@@ -1625,7 +1625,7 @@ class ApiService {
   }
 
   // ADD THIS METHOD TO YOUR ApiService CLASS
-// Place it with your other application-related methods
+  // Place it with your other application-related methods
 
   /// PHASE 4: Withdraw application
   static Future<Map<String, dynamic>> withdrawApplication({
@@ -1914,5 +1914,212 @@ class ApiService {
         'message': 'Upload failed: $e',
       };
     }
+  }
+// Add these methods to your existing lib/core/services/api_service.dart
+// FIXED: Uses your existing token methods and proper syntax
+
+  /// Get enhanced job listings with PWD accommodations and real statistics
+  static Future<Map<String, dynamic>> getEnhancedJobListings({
+    String? search,
+    String? location,
+    String? jobType,
+    int page = 1,
+    int limit = 20,
+  }) async {
+    try {
+      // FIXED: Use your existing getToken method
+      final token = await getToken();
+      if (token == null) {
+        throw Exception('Authentication token not found');
+      }
+
+      final baseUrl = await ApiEndpoints.baseUrl;
+      final uri = Uri.parse('$baseUrl/candidate/get_enhanced_job_listings.php');
+
+      // Build query parameters
+      final queryParams = <String, String>{
+        'page': page.toString(),
+        'limit': limit.toString(),
+      };
+
+      if (search != null && search.isNotEmpty) {
+        queryParams['search'] = search;
+      }
+      if (location != null && location.isNotEmpty) {
+        queryParams['location'] = location;
+      }
+      if (jobType != null && jobType.isNotEmpty) {
+        queryParams['job_type'] = jobType;
+      }
+
+      final finalUri = uri.replace(queryParameters: queryParams);
+
+      print('🔧 API Call: $finalUri'); // Debug log
+
+      final response = await http.get(
+        finalUri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
+
+      print('🔧 API Response Status: ${response.statusCode}'); // Debug log
+
+      final responseData = json.decode(response.body);
+      print('🔧 API Response Success: ${responseData['success']}'); // Debug log
+
+      return responseData;
+    } catch (e) {
+      print('❌ API Error (Enhanced Job Listings): $e');
+      return {
+        'success': false,
+        'message': 'Failed to load job listings: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Get job statistics for dashboard
+  static Future<Map<String, dynamic>> getJobStatistics() async {
+    try {
+      // This endpoint will return the same statistics as the enhanced listings
+      return await getEnhancedJobListings(limit: 1); // Just get stats
+    } catch (e) {
+      print('❌ API Error (Job Statistics): $e');
+      return {
+        'success': false,
+        'message': 'Failed to load job statistics',
+        // FIXED: Proper map syntax
+        'statistics': {
+          'total_jobs': 0,
+          'pwd_friendly': 0,
+          'remote_jobs': 0,
+        }
+      };
+    }
+  }
+
+  /// Toggle save/unsave job
+  static Future<Map<String, dynamic>> toggleSaveJob(int jobId) async {
+    try {
+      final token = await getToken();
+      if (token == null) {
+        throw Exception('Authentication token not found');
+      }
+
+      final baseUrl = await ApiEndpoints.baseUrl;
+      final uri = Uri.parse('$baseUrl/candidate/toggle_save_job.php');
+
+      final response = await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({'job_id': jobId}),
+      );
+
+      return json.decode(response.body);
+    } catch (e) {
+      print('❌ API Error (Toggle Save Job): $e');
+      return {
+        'success': false,
+        'message': 'Failed to save/unsave job: ${e.toString()}',
+      };
+    }
+  }
+
+  /// Record job view for analytics and TTS
+  static Future<void> recordJobView(int jobId) async {
+    try {
+      final token = await getToken();
+      if (token == null) return;
+
+      final baseUrl = await ApiEndpoints.baseUrl;
+      final uri = Uri.parse('$baseUrl/analytics/record_job_view.php');
+
+      await http.post(
+        uri,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: json.encode({'job_id': jobId}),
+      );
+    } catch (e) {
+      print('❌ API Error (Record Job View): $e');
+      // Don't throw error for analytics
+    }
+  }
+
+  /// Get formatted job text for TTS reading
+  static String formatJobForTTS(Map<String, dynamic> job) {
+    final accommodationsList = job['accommodations'] as List<dynamic>? ?? [];
+    final featuresList = job['features'] as List<dynamic>? ?? [];
+
+    String ttsText = '';
+
+    // Job title and company
+    ttsText += 'Job opening: ${job['title']} at ${job['company']}. ';
+
+    // Location and type
+    ttsText +=
+        'Location: ${job['location']}. Employment type: ${job['employment_type']}. ';
+
+    // Salary if available
+    if (job['salary_range'] != null &&
+        job['salary_range'].toString().isNotEmpty) {
+      ttsText += 'Salary range: ${job['salary_range']}. ';
+    }
+
+    // PWD accommodations - KEY FEATURE
+    if (accommodationsList.isNotEmpty) {
+      ttsText += 'This job offers PWD accommodations including: ';
+      ttsText += accommodationsList.join(', ');
+      ttsText += '. ';
+    }
+
+    // Additional features
+    if (featuresList.isNotEmpty) {
+      ttsText += 'Additional benefits: ';
+      ttsText += featuresList.join(', ');
+      ttsText += '. ';
+    }
+
+    // Job description (first 200 characters)
+    if (job['description'] != null) {
+      String description = job['description'].toString();
+      if (description.length > 200) {
+        description = description.substring(0, 200) + '...';
+      }
+      ttsText += 'Job description: $description ';
+    }
+
+    // Posted time
+    ttsText += 'Posted ${job['posted_time']}.';
+
+    return ttsText;
+  }
+
+  /// Format page summary for TTS
+  static String formatJobsSummaryForTTS(Map<String, dynamic> response) {
+    final statistics = response['statistics'] ?? {};
+    final totalJobs = statistics['total_jobs'] ?? 0;
+    final pwdFriendly = statistics['pwd_friendly'] ?? 0;
+    final remoteJobs = statistics['remote_jobs'] ?? 0;
+
+    String summary = 'Job search results: ';
+    summary += 'Found $totalJobs total job opportunities. ';
+    summary += '$pwdFriendly jobs offer PWD-friendly accommodations. ';
+    summary += '$remoteJobs jobs offer remote work options. ';
+
+    if (totalJobs > 0) {
+      summary +=
+          'You can tap on individual jobs to hear their descriptions, or use the apply button to start your application.';
+    } else {
+      summary += 'No jobs found. Try adjusting your search criteria.';
+    }
+
+    return summary;
   }
 }

@@ -72,4 +72,44 @@ class AppColors {
   static const Color progressBackground = Color(0xFFE1E1E1);
   static const Color accentTeal = Color(0xFF26A69A);
   static const Color warningOrange = Color(0xFFFF9800);
+
+  // PWD Accommodation Badges (Green theme from your web)
+  static const Color pwdGreen = Color(0xFF4CAF50); // Main PWD green
+  static const Color pwdGreenLight = Color(0xFFE8F5E8); // Light background
+  static const Color pwdGreenBorder = Color(0xFF81C784); // Border color
+
+  // PWD Feature Badges (Blue theme from your web)
+  static const Color pwdBlue = Color(0xFF2196F3); // Feature blue
+  static const Color pwdBlueLight = Color(0xFFE3F2FD); // Light background
+  static const Color pwdBlueBorder = Color(0xFF64B5F6); // Border color
+
+  // TTS Controls (matching your web TTS styling)
+  static const Color ttsBackground = Color(0xFF257180); // Primary color
+  static const Color ttsHover = Color(0xFFFD8B51); // Accent on hover
+  static const Color ttsActive = Color(0xFF1E5D68); // Active state
+
+  // Voice Search (matching your web voice search)
+  static const Color voiceBackground = Color(0xFF2F8A99); // Sidebar color
+  static const Color voiceActive = Color(0xFFDC3545); // Recording state
+  static const Color voiceListening = Color(0xFF28A745); // Success green
+
+  // Application Status Colors
+  static const Color statusSubmitted = Color(0xFF2196F3); // Blue
+  static const Color statusUnderReview = Color(0xFFFF9800); // Orange
+  static const Color statusShortlisted = Color(0xFF9C27B0); // Purple
+  static const Color statusInterviewing = Color(0xFF673AB7); // Deep purple
+  static const Color statusHired = Color(0xFF4CAF50); // Green
+  static const Color statusRejected = Color(0xFFFF5722); // Red
+
+  // Statistics Card Colors (from your web stats cards)
+  static const Color statTotalJobs = Color(0xFF257180); // Primary
+  static const Color statPwdFriendly = Color(0xFF4CAF50); // Green
+  static const Color statRemoteJobs = Color(0xFF2196F3); // Blue
+
+  // Job Card Accent Colors (matching web design)
+  static const Color companyLogoBg =
+      Color(0xFF257180); // Company logo backgrounds
+  static const Color locationPillBg =
+      Color(0x80F2E5BF); // Location pill background
+  static const Color salaryTextColor = Color(0xFF4CAF50); // Salary text color
 }

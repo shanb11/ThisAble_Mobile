@@ -69,6 +69,8 @@ class ApiEndpoints {
       '${await baseUrl}/candidate/get_dashboard_home.php';
   static Future<String> get getApplicationsList async =>
       '${await baseUrl}/candidate/get_applications_list.php';
+  static Future<String> get getEnhancedJobListings async =>
+      '${await baseUrl}/candidate/get_enhanced_job_listings.php';
 
   // UTILITY: Build any endpoint dynamically
   static Future<String> buildUrl(String endpoint) async {

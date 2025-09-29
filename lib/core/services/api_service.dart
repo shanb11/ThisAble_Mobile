@@ -984,6 +984,8 @@ class ApiService {
     required int jobId,
     required String action, // 'save' or 'apply'
     String? coverLetter,
+    String? accessibilityNeeds, // ✅ ADD THIS
+    int? resumeId, // ✅ ADD THIS
   }) async {
     try {
       Map<String, dynamic> body = {
@@ -991,8 +993,16 @@ class ApiService {
         'action': action,
       };
 
-      if (coverLetter != null) {
+      if (coverLetter != null && coverLetter.isNotEmpty) {
         body['cover_letter'] = coverLetter;
+      }
+
+      if (accessibilityNeeds != null && accessibilityNeeds.isNotEmpty) {
+        body['accessibility_needs'] = accessibilityNeeds; // ✅ ADD THIS
+      }
+
+      if (resumeId != null && resumeId > 0) {
+        body['resume_id'] = resumeId; // ✅ ADD THIS
       }
 
       return await _makeAuthenticatedRequest('candidate/job_actions.php', body);
@@ -1977,6 +1987,15 @@ class ApiService {
         'message': 'Failed to load job listings: ${e.toString()}',
       };
     }
+  }
+
+  // Add this to lib/core/services/api_service.dart
+  static Future<Map<String, String>> getAuthHeaders() async {
+    final token = await getToken();
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    };
   }
 
   /// Get job statistics for dashboard

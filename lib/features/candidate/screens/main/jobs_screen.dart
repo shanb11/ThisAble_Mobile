@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../core/services/api_service.dart';
+import '../../widgets/enhanced_application_modal.dart';
+import '../../widgets/enhanced_job_details_modal.dart';
 
 class CandidateJobListingsScreen extends StatefulWidget {
   const CandidateJobListingsScreen({super.key});
@@ -252,25 +254,16 @@ class _CandidateJobListingsScreenState extends State<CandidateJobListingsScreen>
 
   // KEEPING YOUR EXACT WORKING _applyToJob METHOD
   Future<void> _applyToJob(Map<String, dynamic> job) async {
-    setState(() => _isPerformingAction = true);
+    final result = await showModalBottomSheet<bool>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => EnhancedApplicationModal(job: job),
+    );
 
-    try {
-      final response = await ApiService.performJobAction(
-        jobId: job['job_id'],
-        action: 'apply',
-        coverLetter: null, // Could add cover letter modal later
-      );
-
-      if (response['success']) {
-        _showSuccessSnackBar('Application submitted successfully');
-        // Optionally navigate to applications tab
-      } else {
-        _showErrorSnackBar(response['message'] ?? 'Failed to apply to job');
-      }
-    } catch (e) {
-      _showErrorSnackBar('Failed to apply to job');
-    } finally {
-      setState(() => _isPerformingAction = false);
+    // If application was successful, reload jobs
+    if (result == true) {
+      _loadJobs(refresh: true);
     }
   }
 
@@ -328,8 +321,14 @@ class _CandidateJobListingsScreenState extends State<CandidateJobListingsScreen>
       builder: (context) => EnhancedJobDetailsModal(
         job: job,
         isSaved: _savedJobs.contains(job['job_id']),
-        onSave: () => _toggleJobSave(job),
-        onApply: () => _showApplyModal(job),
+        onSave: () {
+          Navigator.pop(context);
+          _toggleJobSave(job);
+        },
+        onApply: () {
+          Navigator.pop(context);
+          _applyToJob(job);
+        },
       ),
     );
   }

@@ -2141,4 +2141,53 @@ class ApiService {
 
     return summary;
   }
+
+  // Add this method to ApiService class
+  static Future<Map<String, dynamic>> getApplicationData(int jobId) async {
+    try {
+      final endpoint = await DynamicApiConfig.buildEndpoint(
+          'candidate/get_application_data.php?job_id=$jobId');
+
+      print('🔧 Fetching application data from: $endpoint');
+
+      final response = await http.get(
+        Uri.parse(endpoint),
+        headers: await _getHeaders(),
+      );
+
+      print('🔧 Application data response: ${response.statusCode}');
+      return _handleResponse(response);
+    } catch (e) {
+      print('🔧 Error fetching application data: $e');
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
+  static Future<Map<String, dynamic>> applyToJob({
+    required int jobId,
+    required int resumeId,
+    String? coverLetter,
+    String? accessibilityNeeds,
+  }) async {
+    try {
+      final endpoint =
+          await DynamicApiConfig.buildEndpoint('candidate/job_actions.php');
+
+      final response = await http.post(
+        Uri.parse(endpoint),
+        headers: await _getHeaders(),
+        body: json.encode({
+          'action': 'apply_job',
+          'job_id': jobId,
+          'resume_id': resumeId,
+          'cover_letter': coverLetter ?? '',
+          'accessibility_needs': accessibilityNeeds ?? '',
+        }),
+      );
+
+      return _handleResponse(response);
+    } catch (e) {
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
 }

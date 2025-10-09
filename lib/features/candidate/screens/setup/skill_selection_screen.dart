@@ -406,88 +406,94 @@ class _SkillSelectionScreenState extends State<SkillSelectionScreen> {
                                       spacing: 15,
                                       runSpacing: 15,
                                       alignment: WrapAlignment.center,
-                                      children: _filteredSkills
-                                          .map(
-                                            (skill) => GestureDetector(
-                                              onTap: () {
-                                                setState(() {
-                                                  if (_selectedSkills
-                                                      .contains(skill['id'])) {
-                                                    _selectedSkills
-                                                        .remove(skill['id']);
-                                                  } else {
-                                                    _selectedSkills
-                                                        .add(skill['id']);
-                                                  }
-                                                });
-                                              },
-                                              child: Container(
-                                                width: 160,
-                                                height: 110,
-                                                padding:
-                                                    const EdgeInsets.all(15),
-                                                decoration: BoxDecoration(
-                                                  color: _selectedSkills
-                                                          .contains(skill['id'])
-                                                      ? const Color(0xFFFFF9F2)
-                                                      : Colors.white,
-                                                  borderRadius:
-                                                      BorderRadius.circular(12),
-                                                  border: Border.all(
-                                                    color: _selectedSkills
-                                                            .contains(
-                                                                skill['id'])
-                                                        ? AppColors.accent
-                                                        : Colors.transparent,
-                                                    width: 2,
-                                                  ),
-                                                  boxShadow: [
-                                                    BoxShadow(
-                                                      color: Colors.black
-                                                          .withOpacity(0.05),
-                                                      blurRadius: 8,
-                                                      offset:
-                                                          const Offset(0, 4),
-                                                    ),
-                                                  ],
-                                                ),
-                                                child: Column(
-                                                  mainAxisAlignment:
-                                                      MainAxisAlignment.center,
-                                                  children: [
-                                                    Text(
-                                                      _getSkillIcon(
-                                                          skill['icon']),
-                                                      style: TextStyle(
-                                                        fontSize: 24,
-                                                        color: _selectedSkills
-                                                                .contains(
-                                                                    skill['id'])
-                                                            ? AppColors.accent
-                                                            : AppColors.primary,
-                                                      ),
-                                                    ),
-                                                    const SizedBox(height: 8),
-                                                    Text(
-                                                      skill['name'],
-                                                      style: const TextStyle(
-                                                        fontSize: 14,
-                                                        fontWeight:
-                                                            FontWeight.w600,
-                                                        color: Colors.black87,
-                                                      ),
-                                                      textAlign:
-                                                          TextAlign.center,
-                                                      maxLines: 2,
-                                                      overflow:
-                                                          TextOverflow.ellipsis,
-                                                    ),
-                                                  ],
-                                                ),
-                                              ),
+                                      children: _filteredSkills.map((skill) {
+                                        return GestureDetector(
+                                          onTap: () {
+                                            setState(() {
+                                              if (_selectedSkills
+                                                  .contains(skill['id'])) {
+                                                _selectedSkills
+                                                    .remove(skill['id']);
+                                              } else {
+                                                _selectedSkills
+                                                    .add(skill['id']);
+                                              }
+                                            });
+                                          },
+                                          child: Container(
+                                            width: 160,
+                                            // ✅ NO FIXED HEIGHT - Uses constraints for flexibility
+                                            constraints: const BoxConstraints(
+                                              minHeight: 120,
+                                              maxHeight: 150,
                                             ),
-                                          )
-                                          .toList(),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 12,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: _selectedSkills
+                                                      .contains(skill['id'])
+                                                  ? AppColors.primary
+                                                      .withOpacity(0.1)
+                                                  : Colors.white,
+                                              borderRadius:
+                                                  BorderRadius.circular(15),
+                                              border: Border.all(
+                                                color: _selectedSkills
+                                                        .contains(skill['id'])
+                                                    ? AppColors.primary
+                                                    : Colors.grey.shade300,
+                                                width: 2,
+                                              ),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black
+                                                      .withOpacity(0.05),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 4),
+                                                ),
+                                              ],
+                                            ),
+                                            child: Column(
+                                              mainAxisSize: MainAxisSize
+                                                  .min, // ✅ Allows dynamic sizing
+                                              mainAxisAlignment:
+                                                  MainAxisAlignment.center,
+                                              children: [
+                                                // ✅ FIXED: Use Text widget for emoji, not Icon widget
+                                                // ✅ FIXED: Use skill['icon'] not skill['name']
+                                                Text(
+                                                  _getSkillIcon(
+                                                      skill['icon'] ?? ''),
+                                                  style: const TextStyle(
+                                                    fontSize: 40,
+                                                    // Emojis don't use color property
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 8),
+                                                Flexible(
+                                                  // ✅ Makes text flexible
+                                                  child: Text(
+                                                    skill['name'] ?? '',
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: Colors.black87,
+                                                      height: 1.2,
+                                                    ),
+                                                    textAlign: TextAlign.center,
+                                                    maxLines: 2,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        );
+                                      }).toList(),
                                     ),
 
                               const SizedBox(height: 30),

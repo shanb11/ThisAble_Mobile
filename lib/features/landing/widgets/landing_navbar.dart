@@ -98,28 +98,21 @@ class LandingNavbar extends StatelessWidget {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Logo Icon (matches your thisablelogo.png)
-        Container(
-          width: 50, // matches .logo img height: 50px
+        // Your actual logo PNG
+        Image.asset(
+          'assets/images/thisablelogo.png',
+          width: 50,
           height: 50,
-          decoration: const BoxDecoration(
-            color: AppColors.primaryOrange, // Using YOUR actual color
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(
-            Icons.accessibility_new,
-            color: Colors.white,
-            size: 30,
-          ),
+          fit: BoxFit.contain,
         ),
 
-        const SizedBox(width: 10), // matches .logo img margin-right: 10px
-        // Logo Text (matches .logo span)
+        const SizedBox(width: 10),
+
+        // Logo Text
         Text(
           'ThisAble',
           style: AppTextStyles.navItemActive.copyWith(
-            // Using YOUR actual text style
-            fontSize: 24, // matches .logo span font-size: 1.5rem
+            fontSize: 24,
             fontWeight: FontWeight.bold,
           ),
         ),

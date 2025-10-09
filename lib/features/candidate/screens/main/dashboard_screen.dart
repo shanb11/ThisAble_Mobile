@@ -8,6 +8,7 @@ import 'jobs_screen.dart';
 import 'settings_screen.dart';
 import '../../../../../screens/test_api_screen.dart';
 import 'dart:convert'; // Add this if it's not already there
+import '../../../../shared/widgets/tts_button.dart';
 
 class CandidateDashboardScreen extends StatefulWidget {
   const CandidateDashboardScreen({super.key});
@@ -258,6 +259,56 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  /// Generate dashboard summary text for TTS
+  String _buildDashboardSummaryForTTS() {
+    if (_isLoadingStats) {
+      return "Loading dashboard statistics...";
+    }
+
+    final applicationsCount = _statsData['applications_count'] ?? 0;
+    final savedJobsCount = _statsData['saved_jobs_count'] ?? 0;
+    final interviewsCount = _statsData['interview_scheduled_count'] ?? 0;
+    final notificationsCount = _statsData['notifications_count'] ?? 0;
+
+    String summary = "Dashboard Summary. ";
+
+    // Stats
+    summary += "You have $applicationsCount job application";
+    if (applicationsCount != 1) summary += "s";
+    summary += ". ";
+
+    summary += "$savedJobsCount saved job";
+    if (savedJobsCount != 1) summary += "s";
+    summary += ". ";
+
+    if (interviewsCount > 0) {
+      summary += "$interviewsCount scheduled interview";
+      if (interviewsCount != 1) summary += "s";
+      summary += ". ";
+    }
+
+    if (notificationsCount > 0) {
+      summary += "$notificationsCount unread notification";
+      if (notificationsCount != 1) summary += "s";
+      summary += ". ";
+    }
+
+    // Recent applications
+    if (_isLoadingApplications) {
+      summary += "Loading recent applications.";
+    } else if (_recentApplications.isNotEmpty) {
+      final recentApp = _recentApplications[0];
+      summary +=
+          "Your most recent application is for ${recentApp['job_title']} at ${recentApp['company_name']}. ";
+      summary += "Application status: ${recentApp['application_status']}. ";
+    } else {
+      summary +=
+          "You have no recent applications. Start browsing jobs to apply!";
+    }
+
+    return summary;
+  }
+
 // Helper method to set empty stats
   void _setEmptyStats() {
     setState(() {
@@ -504,6 +555,13 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           const Spacer(),
+          // TTS Button - reads dashboard summary
+          TTSButton(
+            text: _buildDashboardSummaryForTTS(),
+            tooltip: 'Read dashboard summary aloud',
+            color: primaryColor,
+          ),
+          // Notification Button
           Stack(
             children: [
               IconButton(
@@ -513,52 +571,32 @@ class _HomePageState extends State<HomePage> {
                   // Navigate to notifications
                 },
               ),
-              Positioned(
-                top: 8,
-                right: 8,
-                child: Container(
-                  width: 18,
-                  height: 18,
-                  decoration: const BoxDecoration(
-                    color: AppColors.errorRed,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Center(
-                    child: Text(
-                      '21',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+              if ((_statsData['notifications_count'] ?? 0) > 0)
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    width: 18,
+                    height: 18,
+                    decoration: const BoxDecoration(
+                      color: AppColors.errorRed,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Center(
+                      child: Text(
+                        '${_statsData['notifications_count'] ?? 0}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
             ],
           ),
         ],
-      ),
-      bottom: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 0, 20, 15),
-          child: Container(
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8F9FA),
-              borderRadius: BorderRadius.circular(25),
-            ),
-            child: const TextField(
-              decoration: InputDecoration(
-                hintText: 'Search for jobs, companies, or skills...',
-                prefixIcon: Icon(Icons.search, color: AppColors.textLight),
-                border: InputBorder.none,
-                contentPadding:
-                    EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

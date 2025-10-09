@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import '../../../../core/services/api_service.dart';
 import '../../widgets/enhanced_application_modal.dart';
 import '../../widgets/enhanced_job_details_modal.dart';
+import '../../../../shared/widgets/tts_button.dart';
+import '../../../../shared/widgets/voice_search_button.dart';
 
 class CandidateJobListingsScreen extends StatefulWidget {
   const CandidateJobListingsScreen({super.key});
@@ -359,6 +361,16 @@ class _CandidateJobListingsScreenState extends State<CandidateJobListingsScreen>
       floating: false,
       pinned: true,
       backgroundColor: primaryColor,
+      // ADD THIS ACTIONS SECTION
+      actions: [
+        // TTS Button - reads job search summary
+        TTSButton(
+          text: _buildJobsSummaryForTTS(),
+          tooltip: 'Read job search results',
+          color: Colors.white,
+        ),
+        const SizedBox(width: 8),
+      ],
       flexibleSpace: FlexibleSpaceBar(
         background: Container(
           decoration: BoxDecoration(
@@ -382,66 +394,70 @@ class _CandidateJobListingsScreenState extends State<CandidateJobListingsScreen>
                       fontWeight: FontWeight.bold,
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  // ✨ ENHANCED SEARCH BAR (like your web version)
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Container(
-                          height: 45,
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
-                                blurRadius: 4,
-                                offset: const Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                          child: TextField(
-                            controller: _searchController,
-                            decoration: const InputDecoration(
-                              hintText: 'Search for jobs...',
-                              prefixIcon:
-                                  Icon(Icons.search, color: Colors.grey),
-                              border: InputBorder.none,
-                              contentPadding: EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 12,
-                              ),
-                            ),
-                            onSubmitted: (query) {
-                              setState(() {
-                                _searchQuery = query;
-                              });
-                              _performSearch();
-                            },
-                          ),
-                        ),
+                  const SizedBox(height: 16),
+                  // Search bar
+                  TextField(
+                    controller: _searchController,
+                    onChanged: (_) => _performSearch(),
+                    style: const TextStyle(color: Colors.black87),
+                    decoration: InputDecoration(
+                      hintText: 'Search jobs, skills, companies...',
+                      hintStyle: TextStyle(color: Colors.grey[600]),
+                      prefixIcon: Icon(Icons.search, color: primaryColor),
+                      // ADD THIS SUFFIX ICON - Voice Search Button
+                      suffixIcon: VoiceSearchButton(
+                        onResult: (text) {
+                          _searchController.text = text;
+                          _performSearch();
+                          _showVoiceSearchFeedback('Searching for "$text"');
+                        },
+                        idleColor: primaryColor,
+                        listeningColor: accentColor,
+                        size: 40,
                       ),
-                      const SizedBox(width: 12),
-                      // ✨ ENHANCED FILTER BUTTON
-                      Container(
-                        height: 45,
-                        width: 45,
-                        decoration: BoxDecoration(
-                          color: Colors.white.withOpacity(0.2),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: IconButton(
-                          onPressed: _showFilterModal,
-                          icon: const Icon(Icons.tune, color: Colors.white),
-                        ),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
                       ),
-                    ],
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                    ),
                   ),
                 ],
               ),
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// Show voice search feedback
+  void _showVoiceSearchFeedback(String message, {bool isListening = false}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            if (isListening)
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                ),
+              ),
+            if (isListening) const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: isListening ? accentColor : primaryColor,
+        duration: Duration(seconds: isListening ? 30 : 2),
+        behavior: SnackBarBehavior.floating,
       ),
     );
   }
@@ -794,6 +810,18 @@ class _CandidateJobListingsScreenState extends State<CandidateJobListingsScreen>
             ),
             const SizedBox(height: 12),
 
+            // Inside your job card widget, add this button
+            Positioned(
+              top: 8,
+              right: 8,
+              child: TTSButton(
+                text: _buildJobCardTTS(job),
+                tooltip: 'Read job details',
+                isIconOnly: false,
+                size: 32,
+              ),
+            ),
+
             // Job details row
             Row(
               children: [
@@ -906,6 +934,102 @@ class _CandidateJobListingsScreenState extends State<CandidateJobListingsScreen>
         ),
       ),
     );
+  }
+
+  /// Generate single job description for TTS
+  String _buildJobCardTTS(Map<String, dynamic> job) {
+    String text = "${job['job_title']} at ${job['company_name']}. ";
+
+    if (job['location'] != null) {
+      text += "Location: ${job['location']}. ";
+    }
+
+    if (job['employment_type'] != null) {
+      text += "Employment type: ${job['employment_type']}. ";
+    }
+
+    if (job['salary_range'] != null) {
+      text += "Salary: ${job['salary_range']}. ";
+    }
+
+    if (job['job_description'] != null &&
+        job['job_description'].toString().isNotEmpty) {
+      text += "Description: ${job['job_description']}. ";
+    }
+
+    final accommodations = job['pwd_accommodations'] as List?;
+    if (accommodations != null && accommodations.isNotEmpty) {
+      text +=
+          "This job offers the following accommodations: ${accommodations.join(', ')}. ";
+    }
+
+    return text;
+  }
+
+  /// Generate job search results summary for TTS
+  /// Generate job search results summary for TTS
+  String _buildJobsSummaryForTTS() {
+    if (_isLoadingJobs) {
+      return "Loading job listings...";
+    }
+
+    final totalJobs = _allJobs.length;
+
+    String summary = "Job search results. ";
+
+    if (totalJobs == 0) {
+      summary +=
+          "No jobs found matching your search criteria. Try adjusting your filters or search terms.";
+      return summary;
+    }
+
+    summary += "Found $totalJobs job";
+    if (totalJobs != 1) summary += "s";
+    summary += ". ";
+
+    // Count PWD-friendly jobs
+    int pwdFriendlyCount = 0;
+    int remoteCount = 0;
+
+    for (var job in _allJobs) {
+      final accommodations = job['pwd_accommodations'] as List?;
+      if (accommodations != null && accommodations.isNotEmpty) {
+        pwdFriendlyCount++;
+      }
+
+      if (job['remote_work_available'] == true ||
+          job['remote_work_available'] == 1) {
+        remoteCount++;
+      }
+    }
+
+    if (pwdFriendlyCount > 0) {
+      summary += "$pwdFriendlyCount job";
+      if (pwdFriendlyCount != 1) summary += "s";
+      summary += " offer PWD-friendly accommodations. ";
+    }
+
+    if (remoteCount > 0) {
+      summary += "$remoteCount job";
+      if (remoteCount != 1) summary += "s";
+      summary += " offer remote work options. ";
+    }
+
+    // Add first job as example
+    if (_allJobs.isNotEmpty) {
+      final firstJob = _allJobs[0];
+      summary +=
+          "First result: ${firstJob['job_title']} at ${firstJob['company_name']}. ";
+
+      if (firstJob['location'] != null) {
+        summary += "Located in ${firstJob['location']}. ";
+      }
+    }
+
+    summary +=
+        "Tap on any job card to hear more details, or use the apply button to submit your application.";
+
+    return summary;
   }
 
   // ✨ NEW: PWD Accommodation chips (key web feature!)

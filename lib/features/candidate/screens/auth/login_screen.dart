@@ -198,24 +198,14 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Logo icon
-          Container(
-            width: 70,
-            height: 70,
-            decoration: const BoxDecoration(
-              color: AppColors.primaryOrange,
-              shape: BoxShape.circle,
-            ),
-            child: const Icon(
-              Icons.accessibility_new,
-              color: Colors.white,
-              size: 40,
-            ),
+          // Your actual PNG logo
+          Image.asset(
+            'assets/images/thisablelogo.png',
+            width: 50,
+            height: 50,
+            fit: BoxFit.contain,
           ),
-
-          const SizedBox(width: 15),
-
-          // Logo text
+          const SizedBox(width: 10),
           Text(
             'ThisAble',
             style: GoogleFonts.inter(

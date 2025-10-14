@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../../core/services/api_service.dart';
+import '../../widgets/work_preferences_bottom_sheet.dart';
 
 class CandidateProfileScreen extends StatefulWidget {
   const CandidateProfileScreen({super.key});
@@ -44,6 +45,8 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
+
+  Map<String, dynamic> _workPreferences = {};
 
   @override
   void initState() {
@@ -142,6 +145,15 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
           _profileCompletion = data['profile_completion'] ?? 0;
           _isLoadingProfile = false;
         });
+
+        _workPreferences = data['work_preferences'] ??
+            {
+              'work_style': null,
+              'job_type': null,
+              'salary_range': null,
+              'availability': null,
+            };
+        print('🔧 [Profile] Work preferences loaded: $_workPreferences');
 
         // Populate text controllers
         _populateControllers();
@@ -337,6 +349,8 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
                     _buildAccessibilitySection(),
                     const SizedBox(height: 16),
                     _buildResumeSection(),
+                    const SizedBox(height: 16),
+                    _buildWorkPreferencesSection(),
                   ],
                 ),
               ),
@@ -864,6 +878,198 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
                   ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildWorkPreferencesSection() {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          // Header
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              border: Border(
+                bottom: BorderSide(color: Colors.grey[200]!, width: 1),
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Row(
+                  children: [
+                    Icon(Icons.work_outline, color: accentColor, size: 20),
+                    SizedBox(width: 8),
+                    Text(
+                      'Work Preferences',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: primaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+                IconButton(
+                  onPressed: _editWorkPreferences,
+                  icon: const Icon(Icons.edit, color: primaryColor),
+                ),
+              ],
+            ),
+          ),
+
+          // Work Preferences Grid (matches web layout)
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              children: [
+                // Row 1: Work Style & Job Type
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildPreferenceItem(
+                        icon: Icons.laptop_chromebook,
+                        title: 'Work Style',
+                        value: _workPreferences['work_style'] != null
+                            ? _capitalizeFirst(_workPreferences['work_style'])
+                            : 'Not specified',
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildPreferenceItem(
+                        icon: Icons.business_center,
+                        title: 'Job Type',
+                        value: _workPreferences['job_type'] != null
+                            ? _formatJobType(_workPreferences['job_type'])
+                            : 'Not specified',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                // Row 2: Salary & Availability
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildPreferenceItem(
+                        icon: Icons.payments,
+                        title: 'Expected Salary',
+                        value:
+                            _workPreferences['salary_range'] ?? 'Not specified',
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildPreferenceItem(
+                        icon: Icons.event_available,
+                        title: 'Availability',
+                        value:
+                            _workPreferences['availability'] ?? 'Not specified',
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPreferenceItem({
+    required IconData icon,
+    required String title,
+    required String value,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: primaryColor),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: Colors.black87,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _capitalizeFirst(String text) {
+    if (text.isEmpty) return text;
+    return text[0].toUpperCase() + text.substring(1);
+  }
+
+  String _formatJobType(String jobType) {
+    switch (jobType.toLowerCase()) {
+      case 'fulltime':
+        return 'Full-Time';
+      case 'parttime':
+        return 'Part-Time';
+      case 'freelance':
+        return 'Freelance';
+      default:
+        return _capitalizeFirst(jobType);
+    }
+  }
+
+  void _editWorkPreferences() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Padding(
+        padding: EdgeInsets.only(
+          bottom: MediaQuery.of(context).viewInsets.bottom,
+        ),
+        child: WorkPreferencesBottomSheet(
+          currentPreferences: _workPreferences,
+          onSaved: () {
+            // Reload profile data after saving
+            _loadProfileData();
+          },
+        ),
       ),
     );
   }

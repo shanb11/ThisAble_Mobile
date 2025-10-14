@@ -1040,6 +1040,45 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> updateWorkPreferences({
+    String? workStyle,
+    String? jobType,
+    String? salaryRange,
+    String? availability,
+  }) async {
+    try {
+      print('🔧 [ApiService] Updating work preferences...');
+
+      // Build form data (matches web's POST format)
+      final formData = <String, String>{};
+
+      if (workStyle != null) formData['work_style'] = workStyle;
+      if (jobType != null) formData['job_type'] = jobType;
+      if (salaryRange != null) formData['salary_range'] = salaryRange;
+      if (availability != null) formData['availability'] = availability;
+
+      print('🔧 Preferences data: $formData');
+
+      final uri =
+          await _buildApiUri('backend/candidate/update_preferences.php');
+
+      // Make POST request
+      final response = await http.post(
+        uri,
+        headers: await _getHeaders(includeAuth: true),
+        body: formData, // Send as form data, not JSON
+      );
+
+      print('🔧 Update preferences response: ${response.statusCode}');
+      print('🔧 Response body: ${response.body}');
+
+      return _handleResponse(response);
+    } catch (e) {
+      print('🔧 ERROR updating preferences: $e');
+      return {'success': false, 'message': 'Network error: $e'};
+    }
+  }
+
   // Update Settings
   static Future<Map<String, dynamic>> updateSettings(
       Map<String, dynamic> settingsData) async {

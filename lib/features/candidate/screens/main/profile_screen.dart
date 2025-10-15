@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../../../core/services/api_service.dart';
 import '../../widgets/work_preferences_bottom_sheet.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart'; // For kIsWeb
+import '../../widgets/resume_viewer_screen.dart';
 
 class CandidateProfileScreen extends StatefulWidget {
   const CandidateProfileScreen({super.key});
@@ -37,6 +40,11 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
   List<dynamic> _accommodationsList = [];
   String _resumeUrl = '';
   int _profileCompletion = 0;
+
+  String? _resumeName;
+  int? _resumeId;
+  int? _resumeSize;
+  String? _resumeUploadDate;
 
   // Text Controllers
   final TextEditingController _firstNameController = TextEditingController();
@@ -136,14 +144,23 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
           // Handle resume data
           var resumeData = data['resumes'];
           _resumeUrl = '';
+          _resumeName = null;
+          _resumeId = null;
+          _resumeSize = null;
+          _resumeUploadDate = null;
+
           if (resumeData != null &&
               resumeData is List &&
               resumeData.isNotEmpty) {
-            _resumeUrl = resumeData[0]['file_path'] ?? '';
-          }
+            final resume = resumeData[0]; // Get the current resume
+            _resumeUrl = resume['file_path'] ?? '';
+            _resumeName = resume['file_name'] ?? 'Resume';
+            _resumeId = resume['resume_id'];
+            _resumeSize = resume['file_size'];
+            _resumeUploadDate = resume['upload_date'];
 
-          _profileCompletion = data['profile_completion'] ?? 0;
-          _isLoadingProfile = false;
+            print('🔧 [Profile] Resume loaded: $_resumeName');
+          }
         });
 
         _workPreferences = data['work_preferences'] ??
@@ -1464,6 +1481,7 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
       ),
       child: Column(
         children: [
+          // Header
           Container(
             padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
@@ -1491,31 +1509,182 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
                 IconButton(
                   onPressed: _uploadResume,
                   icon: const Icon(Icons.upload_file, color: primaryColor),
+                  tooltip:
+                      _resumeUrl.isEmpty ? 'Upload Resume' : 'Replace Resume',
                 ),
               ],
             ),
           ),
+
+          // Resume Content
           Padding(
             padding: const EdgeInsets.all(20),
-            child: _resumeUrl.isEmpty
-                ? const Text('No resume uploaded yet.')
-                : Row(
-                    children: [
-                      Icon(Icons.picture_as_pdf, color: Colors.red[600]),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                        child: Text('Resume.pdf'),
-                      ),
-                      TextButton(
-                        onPressed: _viewResume,
-                        child: const Text('View'),
-                      ),
-                    ],
-                  ),
+            child:
+                _resumeUrl.isEmpty ? _buildNoResumeState() : _buildResumeCard(),
           ),
         ],
       ),
     );
+  }
+
+  Widget _buildNoResumeState() {
+    return Column(
+      children: [
+        Icon(
+          Icons.upload_file,
+          size: 48,
+          color: Colors.grey[400],
+        ),
+        const SizedBox(height: 12),
+        Text(
+          'No resume uploaded yet',
+          style: TextStyle(
+            fontSize: 14,
+            color: Colors.grey[600],
+          ),
+        ),
+        const SizedBox(height: 16),
+        ElevatedButton.icon(
+          onPressed: _uploadResume,
+          icon: const Icon(Icons.add, color: Colors.white),
+          label: const Text(
+            'Upload Resume',
+            style: TextStyle(color: Colors.white),
+          ),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: primaryColor,
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(8),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildResumeCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Column(
+        children: [
+          // Resume Info Row
+          Row(
+            children: [
+              // PDF Icon
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red[50],
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.picture_as_pdf,
+                  color: Colors.red,
+                  size: 32,
+                ),
+              ),
+              const SizedBox(width: 16),
+
+              // Resume Details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _resumeName ?? 'Resume.pdf',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    if (_resumeSize != null) ...[
+                      Text(
+                        _formatFileSize(_resumeSize!),
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                    if (_resumeUploadDate != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        'Uploaded: $_resumeUploadDate',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.grey[600],
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+
+          // Action Buttons Row
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _viewResume,
+                  icon: const Icon(Icons.visibility, size: 18),
+                  label: const Text('View'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: primaryColor,
+                    side: const BorderSide(color: primaryColor),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _downloadResume,
+                  icon: const Icon(Icons.download, size: 18),
+                  label: const Text('Download'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: primaryColor,
+                    side: const BorderSide(color: primaryColor),
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              IconButton(
+                onPressed: _deleteResume,
+                icon: const Icon(Icons.delete, color: Colors.red),
+                tooltip: 'Delete Resume',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatFileSize(int bytes) {
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
   }
 
   Widget _buildInfoRow(IconData icon, String label, String value) {
@@ -1776,13 +1945,245 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
     _showSuccessSnackBar('Accessibility editing will be implemented');
   }
 
-  void _uploadResume() {
-    // TODO: Implement resume upload
-    _showSuccessSnackBar('Resume upload will be implemented');
+  Future<void> _uploadResume() async {
+    try {
+      // Pick file
+      FilePickerResult? result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['pdf'],
+        withData: !kIsWeb, // Get bytes for web, path for mobile
+        withReadStream: false,
+      );
+
+      if (result != null && result.files.isNotEmpty) {
+        final file = result.files.first;
+
+        // Show loading dialog
+        if (mounted) {
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => const Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        }
+
+        // Upload file
+        final response = await ApiService.uploadResumeProfile(file: file);
+
+        // Close loading dialog
+        if (mounted) {
+          Navigator.pop(context);
+        }
+
+        // Show result
+        if (response['success']) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content:
+                    Text(response['message'] ?? 'Resume uploaded successfully'),
+                backgroundColor: Colors.green[600],
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+
+            // Reload profile data
+            _loadProfileData();
+          }
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(response['message'] ?? 'Failed to upload resume'),
+                backgroundColor: Colors.red[600],
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+        }
+      }
+    } catch (e) {
+      print('🔧 Resume upload error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red[600],
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 
   void _viewResume() {
-    // TODO: Implement resume viewing
-    _showSuccessSnackBar('Resume viewing will be implemented');
+    if (_resumeUrl.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No resume to view'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // Navigate to resume viewer
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ResumeViewerScreen(
+          resumePath: _resumeUrl,
+          resumeName: _resumeName ?? 'Resume',
+        ),
+      ),
+    );
+  }
+
+  Future<void> _downloadResume() async {
+    if (_resumeUrl.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No resume to download'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    try {
+      // Get download URL
+      final downloadUrl = await ApiService.getResumeDownloadUrl(_resumeUrl);
+
+      // Show info message (actual download will open in browser on mobile)
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Opening: $_resumeName'),
+            backgroundColor: primaryColor,
+            behavior: SnackBarBehavior.floating,
+            action: SnackBarAction(
+              label: 'OPEN',
+              textColor: Colors.white,
+              onPressed: () {
+                // You can use url_launcher here if needed
+                print('🔧 Download URL: $downloadUrl');
+              },
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      print('🔧 Download error: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red[600],
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _deleteResume() async {
+    if (_resumeId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No resume to delete'),
+          backgroundColor: Colors.orange,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Resume'),
+        content: Text('Are you sure you want to delete "$_resumeName"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      // Show loading
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => const Center(
+            child: CircularProgressIndicator(),
+          ),
+        );
+      }
+
+      // Delete resume
+      final response = await ApiService.deleteResume(resumeId: _resumeId!);
+
+      // Close loading
+      if (mounted) {
+        Navigator.pop(context);
+      }
+
+      // Show result
+      if (response['success']) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content:
+                  Text(response['message'] ?? 'Resume deleted successfully'),
+              backgroundColor: Colors.green[600],
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+
+          // Reload profile data
+          _loadProfileData();
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(response['message'] ?? 'Failed to delete resume'),
+              backgroundColor: Colors.red[600],
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      print('🔧 Delete error: $e');
+      if (mounted) {
+        // Close loading if still open
+        Navigator.pop(context);
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red[600],
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
   }
 }

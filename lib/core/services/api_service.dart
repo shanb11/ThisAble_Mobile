@@ -1079,6 +1079,127 @@ class ApiService {
     }
   }
 
+  static Future<Map<String, dynamic>> uploadResumeProfile({
+    required PlatformFile file,
+  }) async {
+    try {
+      print('🔧 [ApiService] Uploading resume...');
+      print('🔧 File name: ${file.name}');
+      print('🔧 File size: ${file.size}');
+
+      // Check authentication
+      final token = await getToken();
+      if (token == null || token.isEmpty) {
+        return {
+          'success': false,
+          'message': 'Authentication required',
+          'requiresLogin': true
+        };
+      }
+
+      // Build upload URI
+      final uploadUri =
+          await _buildApiUri('backend/candidate/upload_resume_process.php');
+      print('🔧 Upload URI: $uploadUri');
+
+      // Create multipart request
+      var request = http.MultipartRequest('POST', uploadUri);
+
+      // Add authentication header
+      request.headers.addAll(await _getHeaders(includeAuth: true));
+
+      // Add file based on platform
+      if (kIsWeb) {
+        if (file.bytes != null) {
+          request.files.add(http.MultipartFile.fromBytes(
+            'resume_file', // Match backend parameter name
+            file.bytes!,
+            filename: file.name,
+          ));
+        } else {
+          return {'success': false, 'message': 'No file data available'};
+        }
+      } else {
+        // Mobile platform
+        if (file.path != null) {
+          request.files.add(await http.MultipartFile.fromPath(
+            'resume_file', // Match backend parameter name
+            file.path!,
+            filename: file.name,
+          ));
+        } else if (file.bytes != null) {
+          request.files.add(http.MultipartFile.fromBytes(
+            'resume_file', // Match backend parameter name
+            file.bytes!,
+            filename: file.name,
+          ));
+        } else {
+          return {'success': false, 'message': 'No file available'};
+        }
+      }
+
+      print('🔧 Sending multipart request...');
+
+      // Send request
+      final streamedResponse = await request.send();
+      final response = await http.Response.fromStream(streamedResponse);
+
+      print('🔧 Upload response status: ${response.statusCode}');
+      print('🔧 Upload response body: ${response.body}');
+
+      return _handleResponse(response);
+    } catch (e) {
+      print('🔧 ERROR uploading resume: $e');
+      return {'success': false, 'message': 'Upload failed: $e'};
+    }
+  }
+
+  /// Delete Resume
+  /// POST to backend/candidate/delete_resume.php
+  static Future<Map<String, dynamic>> deleteResume({
+    required int resumeId,
+  }) async {
+    try {
+      print('🔧 [ApiService] Deleting resume ID: $resumeId');
+
+      // Check authentication
+      final token = await getToken();
+      if (token == null || token.isEmpty) {
+        return {
+          'success': false,
+          'message': 'Authentication required',
+          'requiresLogin': true
+        };
+      }
+
+      // Build URI
+      final uri = await _buildApiUri('backend/candidate/delete_resume.php');
+
+      // Make POST request with form data
+      final response = await http.post(
+        uri,
+        headers: await _getHeaders(includeAuth: true),
+        body: {
+          'resume_id': resumeId.toString(),
+        },
+      );
+
+      print('🔧 Delete response status: ${response.statusCode}');
+      print('🔧 Delete response body: ${response.body}');
+
+      return _handleResponse(response);
+    } catch (e) {
+      print('🔧 ERROR deleting resume: $e');
+      return {'success': false, 'message': 'Delete failed: $e'};
+    }
+  }
+
+  /// Download Resume (Get file URL for download)
+  static Future<String> getResumeDownloadUrl(String resumePath) async {
+    final baseUrl = await DynamicApiConfig.getBaseUrl();
+    return '$baseUrl/$resumePath';
+  }
+
   // Update Settings
   static Future<Map<String, dynamic>> updateSettings(
       Map<String, dynamic> settingsData) async {

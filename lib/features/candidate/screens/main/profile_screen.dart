@@ -60,7 +60,7 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
   void initState() {
     super.initState();
     _initializeAnimations();
-    _loadProfileData();
+    _loadProfileDataWithTimeout();
   }
 
   void _initializeAnimations() {
@@ -93,9 +93,20 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
 
   Future<void> _loadProfileData() async {
     try {
+      print('🔧 [Profile] ===== LOADING PROFILE DATA =====');
+      print('🔧 [Profile] Calling ApiService.getProfileData()...');
+
       final response = await ApiService.getProfileData();
-      if (response['success'] && mounted) {
+
+      print('🔧 [Profile] Response received');
+      print('🔧 [Profile] Success: ${response['success']}');
+      print('🔧 [Profile] Message: ${response['message']}');
+
+      if (response['success'] == true && mounted) {
         final data = response['data'];
+
+        print('🔧 [Profile] ✅ SUCCESS - Processing data...');
+
         setState(() {
           // FIXED: Map API response structure to mobile app structure
           final personalInfo = data['personal_info'] ?? {};
@@ -116,43 +127,26 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
 
           // FIXED: Handle categorized skills from API
           var skillsData = data['skills'] ?? [];
-          if (skillsData is List && skillsData.isNotEmpty) {
-            // Check if skills are already categorized by the API
-            if (skillsData[0] is Map &&
-                skillsData[0].containsKey('category_name')) {
-              // Skills are already grouped by categories from API
-              _skillsList = skillsData;
-              print(
-                  '🔧 [Profile] Skills loaded: ${skillsData.length} categories');
-              for (var category in skillsData) {
-                print(
-                    '🔧 [Profile] Category: ${category['category_name']} - ${(category['skills'] as List?)?.length ?? 0} skills');
+          if (skillsData is List) {
+            _skillsList = [];
+            for (var category in skillsData) {
+              if (category['skills'] != null) {
+                _skillsList.addAll(category['skills']);
               }
-            } else {
-              // Fallback: Skills are flat list, keep as is for now
-              _skillsList = skillsData;
-              print(
-                  '🔧 [Profile] Skills loaded: ${skillsData.length} skills (flat structure)');
             }
           } else {
             _skillsList = [];
-            print('🔧 [Profile] No skills found');
           }
 
           _accommodationsList = data['accessibility_needs'] ?? [];
+          _profileCompletion = data['profile_completion'] ?? 0;
+
+          print('🔧 [Profile] Profile completion: $_profileCompletion%');
 
           // Handle resume data
-          var resumeData = data['resumes'];
-          _resumeUrl = '';
-          _resumeName = null;
-          _resumeId = null;
-          _resumeSize = null;
-          _resumeUploadDate = null;
-
-          if (resumeData != null &&
-              resumeData is List &&
-              resumeData.isNotEmpty) {
-            final resume = resumeData[0]; // Get the current resume
+          final resumes = data['resumes'] ?? [];
+          if (resumes.isNotEmpty) {
+            final resume = resumes[0];
             _resumeUrl = resume['file_path'] ?? '';
             _resumeName = resume['file_name'] ?? 'Resume';
             _resumeId = resume['resume_id'];
@@ -161,49 +155,105 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
 
             print('🔧 [Profile] Resume loaded: $_resumeName');
           }
+
+          _workPreferences = data['work_preferences'] ??
+              {
+                'work_style': null,
+                'job_type': null,
+                'salary_range': null,
+                'availability': null,
+              };
+          print('🔧 [Profile] Work preferences loaded: $_workPreferences');
+
+          // Populate text controllers
+          _populateControllers();
+
+          // FIXED: Safe animation trigger with proper cleanup
+          if (mounted) {
+            // Stop any existing animation
+            _profileCompletionController.reset();
+
+            // Create new animation with actual completion percentage
+            _profileCompletionAnimation = Tween<double>(
+              begin: 0.0,
+              end: (_profileCompletion / 100.0).clamp(0.0, 1.0),
+            ).animate(CurvedAnimation(
+              parent: _profileCompletionController,
+              curve: Curves.easeInOut,
+            ));
+
+            // Start animation with delay
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (mounted && !_profileCompletionController.isAnimating) {
+                _profileCompletionController.forward();
+              }
+            });
+          }
+
+          // ✅ CRITICAL FIX: Set loading to false on SUCCESS
+          _isLoadingProfile = false;
         });
 
-        _workPreferences = data['work_preferences'] ??
-            {
-              'work_style': null,
-              'job_type': null,
-              'salary_range': null,
-              'availability': null,
-            };
-        print('🔧 [Profile] Work preferences loaded: $_workPreferences');
+        print('🔧 [Profile] ✅ Profile loaded successfully!');
+      } else {
+        // ✅ CRITICAL FIX: Handle API failure (not an exception)
+        print('🔧 [Profile] ❌ API FAILED');
+        print('🔧 [Profile] Error message: ${response['message']}');
 
-        // Populate text controllers
-        _populateControllers();
-
-        // FIXED: Safe animation trigger with proper cleanup
         if (mounted) {
-          // Stop any existing animation
-          _profileCompletionController.reset();
+          setState(() => _isLoadingProfile = false);
 
-          // Create new animation with actual completion percentage
-          _profileCompletionAnimation = Tween<double>(
-            begin: 0.0,
-            end: (_profileCompletion / 100.0).clamp(0.0, 1.0),
-          ).animate(CurvedAnimation(
-            parent: _profileCompletionController,
-            curve: Curves.easeInOut,
-          ));
+          final errorMsg = response['message'] ?? 'Failed to load profile data';
 
-          // Start animation with delay
-          Future.delayed(const Duration(milliseconds: 500), () {
-            if (mounted && !_profileCompletionController.isAnimating) {
-              _profileCompletionController.forward();
-            }
-          });
+          // Check if it's an authentication error
+          if (response['requiresLogin'] == true ||
+              errorMsg.toLowerCase().contains('token') ||
+              errorMsg.toLowerCase().contains('unauthorized') ||
+              errorMsg.toLowerCase().contains('authentication')) {
+            print(
+                '🔧 [Profile] Authentication error detected - redirecting to login');
+
+            _showErrorSnackBar('Session expired. Please login again.');
+
+            // Navigate to login after short delay
+            Future.delayed(const Duration(seconds: 2), () {
+              if (mounted) {
+                Navigator.pushReplacementNamed(context, '/candidate/login');
+              }
+            });
+          } else {
+            _showErrorSnackBar(errorMsg);
+          }
         }
       }
-    } catch (e) {
-      print('🔧 [Profile] Error loading profile data: $e');
+    } catch (e, stackTrace) {
+      print('🔧 [Profile] ❌ EXCEPTION CAUGHT');
+      print('🔧 [Profile] Exception: $e');
+      print('🔧 [Profile] Stack trace: $stackTrace');
+
       if (mounted) {
         setState(() => _isLoadingProfile = false);
-        _showErrorSnackBar('Failed to load profile data');
+        _showErrorSnackBar(
+            'Network error. Please check your connection and try again.');
       }
     }
+  }
+
+  Future<void> _loadProfileDataWithTimeout() async {
+    print('🔧 [Profile] Starting load with 20-second safety timeout');
+
+    // Set a safety timeout (fallback if API hangs)
+    Future.delayed(const Duration(seconds: 20), () {
+      if (mounted && _isLoadingProfile) {
+        print(
+            '🔧 [Profile] ⚠️ SAFETY TIMEOUT REACHED - Stopping loading indicator');
+        setState(() => _isLoadingProfile = false);
+        _showErrorSnackBar('Loading is taking too long. Please try again.');
+      }
+    });
+
+    // Call actual load method
+    await _loadProfileData();
   }
 
   void _populateControllers() {

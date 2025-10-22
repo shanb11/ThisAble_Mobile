@@ -11,6 +11,7 @@ import 'network_discovery_service.dart';
 import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/foundation.dart';
+import 'dart:async'; // For TimeoutException
 
 class ApiService {
   /// Add these methods anywhere in your ApiService class:
@@ -926,11 +927,15 @@ class ApiService {
   // Profile Data - FIXED: Added authentication
   static Future<Map<String, dynamic>> getProfileData() async {
     try {
-      print('🔧 [ApiService] Getting profile data...');
+      print('🔧 [ApiService] ===== GET PROFILE DATA =====');
 
-      // Check authentication
+      // Check authentication first
       final token = await getToken();
+      print(
+          '🔧 [ApiService] Token present: ${token != null && token.isNotEmpty}');
+
       if (token == null || token.isEmpty) {
+        print('🔧 [ApiService] ❌ No token found');
         return {
           'success': false,
           'message': 'Authentication required',
@@ -938,15 +943,44 @@ class ApiService {
         };
       }
 
-      final uri = await _buildApiUri('candidate/get_profile_data.php');
-      final response = await http.get(uri,
-          headers: await _getHeaders(
-              includeAuth: true) // FIXED: Added includeAuth: true
-          );
+      print('🔧 [ApiService] Token: ${token.substring(0, 20)}...');
 
-      return _handleResponse(response);
-    } catch (e) {
-      return {'success': false, 'message': 'Network error: $e'};
+      final uri = await _buildApiUri('candidate/get_profile_data.php');
+      print('🔧 [ApiService] Request URI: $uri');
+
+      // ✅ ADD TIMEOUT - Critical fix
+      final response = await http
+          .get(uri, headers: await _getHeaders(includeAuth: true))
+          .timeout(const Duration(seconds: 15), onTimeout: () {
+        print('🔧 [ApiService] ⏱️ REQUEST TIMEOUT after 15 seconds');
+        throw TimeoutException(
+            'Profile data request timed out after 15 seconds');
+      });
+
+      print('🔧 [ApiService] Response status: ${response.statusCode}');
+      print('🔧 [ApiService] Response body length: ${response.body.length}');
+
+      final result = _handleResponse(response);
+      print('🔧 [ApiService] Parsed result success: ${result['success']}');
+
+      return result;
+    } on TimeoutException catch (e) {
+      print('🔧 [ApiService] ❌ TIMEOUT EXCEPTION: $e');
+      return {
+        'success': false,
+        'message':
+            'Request timed out. Please check your connection and try again.'
+      };
+    } on SocketException catch (e) {
+      print('🔧 [ApiService] ❌ SOCKET EXCEPTION (No internet): $e');
+      return {
+        'success': false,
+        'message': 'No internet connection. Please check your network.'
+      };
+    } catch (e, stackTrace) {
+      print('🔧 [ApiService] ❌ GENERAL EXCEPTION: $e');
+      print('🔧 [ApiService] Stack trace: $stackTrace');
+      return {'success': false, 'message': 'Network error: ${e.toString()}'};
     }
   }
 

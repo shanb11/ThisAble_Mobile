@@ -2,8 +2,8 @@ import 'package:flutter/material.dart';
 import 'app.dart';
 import 'core/services/api_service.dart';
 import 'config/dynamic_api_config.dart';
-import 'core/services/tts_service.dart'; // ← ADD THIS
-import 'core/services/voice_search_service.dart'; // ← ADD THIS
+import 'core/services/tts_service.dart';
+import 'core/services/voice_search_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -20,16 +20,12 @@ void main() async {
   await voiceSearchService.initialize();
   print('✅ Voice Search Ready!');
 
-  // ✅ ENHANCED: Use refresh() instead of initialize() to clear any cached wrong IPs
-  print('🔄 Force refreshing network configuration...');
-  final apiReady = await DynamicApiConfig.refresh();
+  // ✅ UPDATED: Initialize API configuration
+  print('🌐 Initializing API configuration...');
+  await DynamicApiConfig.initialize();
 
-  if (apiReady) {
-    print('✅ API Service ready! Auto-discovery successful.');
-    print('✅ Using IP: ${DynamicApiConfig.currentIP}');
-  } else {
-    print('⚠️ API Service failed to initialize - will try again when needed.');
-  }
+  final baseUrl = await DynamicApiConfig.getBaseUrl();
+  print('✅ API ready at: $baseUrl');
 
   runApp(const ThisAbleApp());
 }

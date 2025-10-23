@@ -10,8 +10,12 @@ class ApiEndpoints {
   static Future<String> get login async => '${await baseUrl}/auth/login.php';
   static Future<String> get signup async => '${await baseUrl}/auth/signup.php';
   static Future<String> get logout async => '${await baseUrl}/auth/logout.php';
-  static Future<String> get googleAuth async =>
-      '${await baseUrl}/auth/google.php';
+  static Future<String> get googleAuth async {
+    final base = await baseUrl;
+    // baseUrl already includes /api, so just append the endpoint
+    return '$base/auth/google.php';
+  }
+
   static Future<String> get verifyPwd async =>
       '${await baseUrl}/auth/verify_pwd.php';
 

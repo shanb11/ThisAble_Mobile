@@ -2,7 +2,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/services/network_discovery_service.dart';
 
 // ✅ PRODUCTION API URL (Vercel) - NEW!
-const String PRODUCTION_API_URL = 'thisable-production.up.railway.app';
+const String PRODUCTION_API_URL =
+    'https://thisable-production.up.railway.app/api';
 const bool USE_PRODUCTION =
     true; // ← Toggle: true = Vercel, false = Local XAMPP
 
@@ -21,10 +22,11 @@ class DynamicApiConfig {
     // ✅ NEW: Check if we should use production API
     if (USE_PRODUCTION) {
       print('🌐 Using PRODUCTION API: $PRODUCTION_API_URL');
+      // Production URL already includes https:// and /api path
       return PRODUCTION_API_URL;
     }
 
-    // Original local IP discovery code (for development)
+    // For local development, keep the http:// prefix
     if (currentIP != null) {
       final baseUrl = 'http://$currentIP:$port/$projectPath';
       print('📡 Using LOCAL API: $baseUrl');

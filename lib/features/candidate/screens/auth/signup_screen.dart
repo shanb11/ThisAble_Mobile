@@ -1800,21 +1800,34 @@ class _SignupScreenState extends State<SignupScreen> {
   }
 
   /// Process Google sign-up (shared logic)
+  /// ✅ FIXED: Process Google sign-up with flexible token handling
   Future<void> _processGoogleSignUp(
       GoogleSignInAccount googleUser, GoogleSignIn googleSignIn) async {
     try {
+      print('🔧 Processing Google Sign-Up for: ${googleUser.email}');
+
       // Get authentication details
       final GoogleSignInAuthentication googleAuth =
           await googleUser.authentication;
 
-      if (googleAuth.idToken == null) {
-        throw Exception('Failed to get Google ID token');
+      // ✅ FIXED: Accept EITHER idToken OR accessToken
+      final hasIdToken =
+          googleAuth.idToken != null && googleAuth.idToken!.isNotEmpty;
+      final hasAccessToken =
+          googleAuth.accessToken != null && googleAuth.accessToken!.isNotEmpty;
+
+      print('🔧 Token Status:');
+      print('  - Has idToken: $hasIdToken');
+      print('  - Has accessToken: $hasAccessToken');
+
+      if (!hasIdToken && !hasAccessToken) {
+        throw Exception('Failed to get any authentication tokens from Google');
       }
 
       // Check if user already exists
       final checkResult = await ApiService.googleSignIn(
-        idToken: googleAuth.idToken!,
-        accessToken: googleAuth.accessToken,
+        idToken: hasIdToken ? googleAuth.idToken! : '',
+        accessToken: hasAccessToken ? googleAuth.accessToken : '',
         action: 'login',
       );
 
@@ -1822,17 +1835,23 @@ class _SignupScreenState extends State<SignupScreen> {
         _isGoogleSignInLoading = false;
       });
 
+      print('🔧 API Check Result: ${checkResult['success']}');
+
       if (checkResult['success']) {
         final data = checkResult['data'];
 
-        if (data['requires_profile_completion'] == true) {
+        if (data['requires_profile_completion'] == true ||
+            data['is_new_user'] == true) {
           // New Google user - proceed to complete profile
-          final googleUserInfo = data['google_user_info'];
+          final googleUserInfo =
+              data['google_user_info'] ?? data['google_data'];
 
           setState(() {
             _isGoogleUser = true;
             _googleUserData = googleUserInfo;
-            _googleIdToken = googleAuth.idToken;
+            // ✅ Store the token we actually received
+            _googleIdToken =
+                hasIdToken ? googleAuth.idToken : googleAuth.accessToken;
 
             // Pre-fill form fields
             _firstNameController.text = googleUserInfo['first_name'] ?? '';
@@ -1840,39 +1859,40 @@ class _SignupScreenState extends State<SignupScreen> {
             _emailController.text = googleUserInfo['email'] ?? '';
           });
 
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                  'Welcome ${googleUserInfo['first_name']}! Please complete your profile.'),
-              backgroundColor: Colors.green,
-            ),
-          );
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                    'Welcome ${googleUserInfo['first_name']}! Please complete your profile.'),
+                backgroundColor: Colors.green,
+              ),
+            );
+          }
 
           _goToStep(2);
         } else {
           // Existing Google user
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Account ${googleUser.email} already exists. Please use the login page.',
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Account ${googleUser.email} already exists. Please use the login page.',
+                ),
+                backgroundColor: Colors.orange,
               ),
-              backgroundColor: Colors.blue,
-            ),
-          );
+            );
 
-          await googleSignIn.signOut();
-          Navigator.pushReplacementNamed(context, AppRoutes.candidateLogin);
+            // Navigate to login
+            Navigator.pushReplacementNamed(context, AppRoutes.candidateLogin);
+          }
         }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Google sign-up failed: ${checkResult['message']}'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        // API error
+        throw Exception(
+            checkResult['message'] ?? 'Failed to verify Google account');
       }
     } catch (e) {
-      throw e; // Re-throw to be caught by the calling method
+      _handleGoogleSignUpError(e);
     }
   }
 
@@ -2073,6 +2093,7 @@ class _SignupScreenState extends State<SignupScreen> {
         // Google user - complete profile
         result = await ApiService.googleSignIn(
           idToken: _googleIdToken!,
+          accessToken: _googleIdToken, // ← ADD THIS LINE!
           action: 'complete_profile',
           additionalData: {
             'phone': _phoneController.text.trim(),

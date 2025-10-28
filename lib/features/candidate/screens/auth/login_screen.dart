@@ -14,6 +14,7 @@ import '../../../../core/utils/platform_utils.dart';
 import '../../../../core/services/google_signin_web_service.dart';
 import '../../../../core/services/google_signin_mobile_service.dart';
 import '../../../../core/services/google_signin_controller.dart';
+import 'package:flutter/foundation.dart'; // ✅ ADDED: For kIsWeb
 
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -498,20 +499,49 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// FIXED: Handle Google Sign-In with new user detection
+  /// ✅ ENHANCED: Handle Google Sign-In with comprehensive debugging
   void _handleGoogleSignIn() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      print('🔧 === STARTING GOOGLE SIGN-IN ===');
+      print('🔧 ═══════════════════════════════════════════════════');
+      print('🔧 STARTING GOOGLE SIGN-IN WITH ENHANCED DEBUGGING');
+      print('🔧 ═══════════════════════════════════════════════════');
 
+      // ✅ STEP 1: Verify Platform Detection
+      print('🔧 STEP 1: Platform Detection');
+      print('  📱 kIsWeb (Flutter constant): ${kIsWeb}');
+      print('  📱 PlatformUtils.isWeb: ${PlatformUtils.isWeb}');
+      print('  📱 PlatformUtils.isMobile: ${PlatformUtils.isMobile}');
+      print('  📱 PlatformUtils.platformName: ${PlatformUtils.platformName}');
+      print(
+          '  📱 Expected Service: ${kIsWeb ? "WEB SERVICE" : "MOBILE SERVICE"}');
+
+      // ✅ STEP 2: Initialize Controller
+      print('🔧 STEP 2: Controller Initialization');
       final controller = GoogleSignInController.instance;
+
+      // Get controller info BEFORE initialization
+      print('  📊 Controller Info (BEFORE init): ${controller.platformInfo}');
+
       await controller.initialize();
+
+      // Get controller info AFTER initialization
+      print('  📊 Controller Info (AFTER init): ${controller.platformInfo}');
+
+      // ✅ STEP 3: Perform Sign-In
+      print('🔧 STEP 3: Performing Sign-In');
       final result = await controller.signIn();
 
-      print('🔧 Google Sign-In Result: ${result.success}');
+      print('  ✅ Sign-In Result:');
+      print('    - Success: ${result.success}');
+      print('    - Platform Used: ${result.platformUsed}');
+      print('    - Account Email: ${result.account?.email ?? 'N/A'}');
+      print('    - Has idToken: ${result.authentication?.idToken != null}');
+      print(
+          '    - Has accessToken: ${result.authentication?.accessToken != null}');
 
       if (result.success &&
           result.account != null &&
@@ -519,24 +549,31 @@ class _LoginScreenState extends State<LoginScreen> {
         final idToken = result.authentication!.idToken;
         final accessToken = result.authentication!.accessToken;
 
-        // Validate we have at least one valid token
+        // ✅ STEP 4: Validate Tokens
+        print('🔧 STEP 4: Token Validation');
         final hasValidIdToken = idToken != null && idToken.trim().isNotEmpty;
         final hasValidAccessToken =
             accessToken != null && accessToken.trim().isNotEmpty;
+
+        print('  🔑 Token Status:');
+        print('    - Valid idToken: $hasValidIdToken');
+        print('    - Valid accessToken: $hasValidAccessToken');
 
         if (!hasValidIdToken && !hasValidAccessToken) {
           throw Exception(
               'No valid authentication tokens received from Google');
         }
 
-        // Call API
+        // ✅ STEP 5: Call Backend API
+        print('🔧 STEP 5: Calling Backend API');
         final apiResult = await ApiService.googleSignIn(
           idToken: hasValidIdToken ? idToken! : '',
           accessToken: hasValidAccessToken ? accessToken! : '',
         );
 
-        print('🔧 API Result Success: ${apiResult['success']}');
-        print('🔧 Full API Result: $apiResult');
+        print('  📡 API Response:');
+        print('    - Success: ${apiResult['success']}');
+        print('    - Message: ${apiResult['message'] ?? 'N/A'}');
 
         setState(() {
           _isLoading = false;
@@ -545,108 +582,123 @@ class _LoginScreenState extends State<LoginScreen> {
         if (apiResult['success'] == true) {
           final data = apiResult['data'];
 
-          // ✅ FIX: Check if this is a new user
+          // ✅ STEP 6: Check if New User
+          print('🔧 STEP 6: User Type Detection');
           if (data['is_new_user'] == true) {
             // NEW USER - Redirect to signup with Google data
-            print('🔧 NEW USER DETECTED - Redirecting to signup');
+            print('  🆕 NEW USER DETECTED - Redirecting to signup');
 
             final googleData = data['google_data'];
 
             if (mounted) {
               // Show message
               ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
+                const SnackBar(
                   content: Text(
                     'Welcome! Please complete your registration with PWD ID details.',
+                    style: TextStyle(color: Colors.white),
                   ),
                   backgroundColor: Colors.blue,
                   duration: Duration(seconds: 3),
                 ),
               );
 
-              // Navigate to signup screen
-              // Pass Google data so signup screen can pre-fill
+              // Navigate to signup with Google data
               Navigator.pushReplacementNamed(
                 context,
                 AppRoutes.candidateSignup,
                 arguments: {
-                  'isGoogleUser': true,
-                  'googleData': googleData,
-                  'googleIdToken': idToken,
+                  'google_data': googleData,
+                  'from_google': true,
                 },
               );
             }
-          } else {
-            // EXISTING USER - Normal login flow
-            print('🔧 EXISTING USER - Proceeding with login');
-
-            final user = data['user'];
-            final nextStep = data['next_step'];
-
-            if (user != null) {
-              final setupComplete = user['setup_complete'] == true;
-
-              // Store user data
-              await ApiService.setCurrentUser(user);
-
-              if (mounted) {
-                // Show welcome message
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content:
-                        Text('Welcome back, ${user['first_name'] ?? 'User'}!'),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-
-                // Navigate based on setup completion
-                if (nextStep == 'dashboard' || setupComplete) {
-                  _navigateToDashboard();
-                } else {
-                  _navigateToAccountSetup();
-                }
-              }
-            } else {
-              print('🔧 ERROR: User data is null for existing user');
-              throw Exception('User data not received from server');
-            }
+            return;
           }
-        } else {
+
+          // ✅ EXISTING USER - Continue to dashboard
+          print('  👤 EXISTING USER - Proceeding to dashboard');
+          final user = data['user'];
+          final setupComplete = user['setup_complete'] == true ||
+              user['setup_complete'] == 1 ||
+              user['setup_complete'] == '1';
+
+          print('  📋 Setup Complete: $setupComplete');
+
+          // Show welcome message
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text(apiResult['message'] ?? 'Unknown error occurred'),
+                content: Text('Welcome back, ${user['first_name']}!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+
+            // Navigate based on setup completion
+            if (setupComplete) {
+              print('  🏠 Navigating to Dashboard');
+              _navigateToDashboard();
+            } else {
+              print('  ⚙️ Navigating to Account Setup');
+              _navigateToAccountSetup();
+            }
+          }
+        } else {
+          // API returned error
+          print('  ❌ API Error: ${apiResult['message']}');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(apiResult['message'] ?? 'Login failed'),
                 backgroundColor: Colors.red,
               ),
             );
           }
         }
       } else {
+        // Sign-in was not successful
         setState(() {
           _isLoading = false;
         });
 
-        if (mounted) {
+        print('  ❌ Sign-In Failed:');
+        print('    - Error: ${result.error}');
+        print('    - Type: ${result.type}');
+
+        if (result.type != GoogleSignInControllerResultType.cancelled &&
+            mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text(result.error ?? 'Google sign-in was cancelled'),
-              backgroundColor: Colors.orange,
+              content: Text(result.error ?? 'Google Sign-In failed'),
+              backgroundColor: Colors.red,
             ),
           );
         }
       }
-    } catch (e) {
+
+      print('🔧 ═══════════════════════════════════════════════════');
+      print('🔧 GOOGLE SIGN-IN PROCESS COMPLETE');
+      print('🔧 ═══════════════════════════════════════════════════');
+    } catch (e, stackTrace) {
       setState(() {
         _isLoading = false;
       });
 
-      print('🔧 Google Sign-In Error: $e');
+      print('🔧 ═══════════════════════════════════════════════════');
+      print('🔧 CRITICAL ERROR IN GOOGLE SIGN-IN');
+      print('🔧 ═══════════════════════════════════════════════════');
+      print('❌ Error: $e');
+      print('❌ Error Type: ${e.runtimeType}');
+      print('❌ Stack Trace:');
+      print(stackTrace);
+      print('🔧 ═══════════════════════════════════════════════════');
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Google sign-in error: $e'),
+            content: Text('Sign-In Error: ${e.toString()}'),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
           ),
         );
       }

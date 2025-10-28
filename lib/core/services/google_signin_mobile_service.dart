@@ -2,8 +2,8 @@ import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
 /// Mobile-Specific Google Sign-In Service for ThisAble
-/// Uses the traditional signIn() method that works reliably on mobile platforms
-/// Maintains your existing working mobile Google Sign-In functionality
+/// ✅ FIXED: Now accepts BOTH idToken and accessToken for better compatibility
+/// Works reliably on mobile platforms AND handles web edge cases
 class GoogleSignInMobileService {
   // Private constructor to prevent direct instantiation
   GoogleSignInMobileService._();
@@ -54,7 +54,8 @@ class GoogleSignInMobileService {
     }
   }
 
-  /// Sign in using mobile-optimized flow (your existing working method)
+  /// ✅ FIXED: Sign in with flexible token handling
+  /// Accepts BOTH idToken (mobile) and accessToken (web fallback)
   Future<GoogleSignInResult> signIn() async {
     if (!_isInitialized) {
       await initialize();
@@ -64,7 +65,6 @@ class GoogleSignInMobileService {
       _debugLog('🚀 Starting mobile Google Sign-In flow...');
 
       // Use the traditional signIn() method - works great on mobile!
-      // This is your existing working logic
       final GoogleSignInAccount? account = await _googleSignIn.signIn();
 
       if (account == null) {
@@ -75,17 +75,29 @@ class GoogleSignInMobileService {
       // Get authentication details
       final GoogleSignInAuthentication auth = await account.authentication;
 
-      // Validate that we have the required tokens
-      if (auth.idToken == null) {
-        _debugLog('❌ Failed to get idToken');
-        throw Exception('Failed to get Google ID token');
+      // ✅ FIXED: Accept EITHER idToken OR accessToken
+      final hasIdToken = auth.idToken != null && auth.idToken!.isNotEmpty;
+      final hasAccessToken =
+          auth.accessToken != null && auth.accessToken!.isNotEmpty;
+
+      // Validate that we have at least ONE valid token
+      if (!hasIdToken && !hasAccessToken) {
+        _debugLog('❌ Failed to get any authentication token');
+        throw Exception('Failed to get any authentication tokens from Google');
       }
 
+      // Log what we received
       _debugLog('✅ Mobile Google Sign-In successful!');
       _debugLog('📧 Email: ${account.email}');
       _debugLog('👤 Name: ${account.displayName}');
-      _debugLog('🔑 Has idToken: ${auth.idToken != null}');
-      _debugLog('🎫 Has accessToken: ${auth.accessToken != null}');
+      _debugLog('🔑 Has idToken: $hasIdToken');
+      _debugLog('🎫 Has accessToken: $hasAccessToken');
+
+      // ✅ FIXED: Warn if only accessToken (unusual for mobile, but acceptable)
+      if (!hasIdToken && hasAccessToken) {
+        _debugLog(
+            '⚠️ No idToken received (unusual for mobile, but continuing with accessToken)');
+      }
 
       return GoogleSignInResult.success(
         account: account,

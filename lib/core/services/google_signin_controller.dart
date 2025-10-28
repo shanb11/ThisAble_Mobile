@@ -46,23 +46,37 @@ class GoogleSignInController {
   }
 
   /// Get the appropriate service for current platform (lazy loaded)
+  /// ✅ ENHANCED: Get the appropriate service for current platform (lazy loaded with debugging)
   Future<dynamic> _getService() async {
+    _debugLog('🔍 Determining which service to use...');
+    _debugLog('  - kIsWeb: ${kIsWeb}');
+    _debugLog('  - PlatformUtils.isWeb: ${PlatformUtils.isWeb}');
+    _debugLog('  - PlatformUtils.isMobile: ${PlatformUtils.isMobile}');
+
     if (PlatformUtils.isWeb) {
       // Web platform - use web service
+      _debugLog('  ✅ Decision: Using WEB Service');
       _webService ??= GoogleSignInWebService.instance;
+
+      _debugLog('  🔄 Initializing Web Service...');
       await _webService!.initialize();
-      _debugLog('🌐 Using Web Service');
+      _debugLog('  ✅ Web Service initialized successfully');
+
       return _webService;
     } else {
       // Mobile platform - use mobile service
+      _debugLog('  ✅ Decision: Using MOBILE Service');
       _mobileService ??= GoogleSignInMobileService.instance;
+
+      _debugLog('  🔄 Initializing Mobile Service...');
       await _mobileService!.initialize();
-      _debugLog('📱 Using Mobile Service');
+      _debugLog('  ✅ Mobile Service initialized successfully');
+
       return _mobileService;
     }
   }
 
-  /// Unified sign-in method that works across all platforms
+  /// ✅ ENHANCED: Unified sign-in method with comprehensive logging
   Future<GoogleSignInControllerResult> signIn() async {
     if (!_isInitialized) {
       await initialize();
@@ -70,12 +84,21 @@ class GoogleSignInController {
 
     try {
       _debugLog('🚀 Starting platform-aware sign-in...');
+      _debugLog('  Platform Info: ${PlatformUtils.platformName}');
 
       // Get the appropriate service for current platform
       final service = await _getService();
 
+      _debugLog('  Service Type: ${service.runtimeType}');
+      _debugLog('  🔄 Calling service.signIn()...');
+
       // Call the service's sign-in method
       final result = await service.signIn();
+
+      _debugLog('  📊 Service Sign-In Result:');
+      _debugLog('    - Success: ${result.success}');
+      _debugLog('    - Type: ${result.type}');
+      _debugLog('    - Account: ${result.account?.email ?? 'N/A'}');
 
       // Convert service result to controller result
       if (result.success) {

@@ -2029,8 +2029,8 @@ class ApiService {
     required String pwdIdNumber,
     required String pwdIdIssuedDate,
     required String pwdIdIssuingLGU,
-    File? imageFile, // For mobile
-    Uint8List? imageBytes, // For web
+    File? imageFile,
+    Uint8List? imageBytes,
     required String fileName,
   }) async {
     try {
@@ -2053,11 +2053,15 @@ class ApiService {
       // Create multipart request
       var request = http.MultipartRequest('POST', Uri.parse(uploadUrl));
 
-      // Add headers
-      final token = await getToken();
-      if (token != null) {
-        request.headers['Authorization'] = 'Bearer $token';
+      final thisAbleToken = await getToken();
+      if (thisAbleToken != null && thisAbleToken.isNotEmpty) {
+        request.headers['Authorization'] = 'Bearer $thisAbleToken';
+        print(
+            '🔧 Using ThisAble auth token: ${thisAbleToken.substring(0, 20)}...');
+      } else {
+        print('🔧 No auth - signup mode (this is OK)');
       }
+      // Note: signupToken (Google token) is not needed anymore
       request.headers['Accept'] = 'application/json';
 
       // Add form fields

@@ -1302,8 +1302,8 @@ class _SignupScreenState extends State<SignupScreen> {
         pwdIdNumber: _pwdIdController.text.trim(),
         pwdIdIssuedDate: _pwdIssuedDateController.text.trim(),
         pwdIdIssuingLGU: _selectedIssuingLGU!,
-        imageFile: _selectedPwdIdFile, // For mobile
-        imageBytes: _selectedPwdIdBytes, // For web
+        imageFile: _selectedPwdIdFile,
+        imageBytes: _selectedPwdIdBytes,
         fileName: _selectedFileName ?? 'pwd_id_file',
       );
 

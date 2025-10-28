@@ -182,8 +182,16 @@ class AppRoutes {
     Navigator.pushNamed(context, candidateLogin);
   }
 
-  static void goToCandidateSignup(BuildContext context) {
-    Navigator.pushNamed(context, candidateSignup);
+  /// Navigate to Candidate Signup (with optional Google data)
+  static void goToCandidateSignup(
+    BuildContext context, {
+    Map<String, dynamic>? googleData,
+  }) {
+    Navigator.pushReplacementNamed(
+      context,
+      candidateSignup,
+      arguments: googleData,
+    );
   }
 
   static void goToCandidateDashboard(BuildContext context) {

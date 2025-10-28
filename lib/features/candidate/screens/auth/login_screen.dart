@@ -498,32 +498,26 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  /// FINAL FIXED Handle Google Sign-In - Corrected method name and response structure
+  /// FIXED: Handle Google Sign-In with new user detection
   void _handleGoogleSignIn() async {
     setState(() {
       _isLoading = true;
     });
 
     try {
-      print('🔧 === STARTING FINAL FIXED GOOGLE SIGN-IN ===');
+      print('🔧 === STARTING GOOGLE SIGN-IN ===');
 
       final controller = GoogleSignInController.instance;
       await controller.initialize();
       final result = await controller.signIn();
 
       print('🔧 Google Sign-In Result: ${result.success}');
-      print('🔧 Platform: ${result.platformUsed}');
 
       if (result.success &&
           result.account != null &&
           result.authentication != null) {
         final idToken = result.authentication!.idToken;
         final accessToken = result.authentication!.accessToken;
-
-        print(
-            '🔧 ID Token Available: ${idToken != null && idToken.isNotEmpty}');
-        print(
-            '🔧 Access Token Available: ${accessToken != null && accessToken.isNotEmpty}');
 
         // Validate we have at least one valid token
         final hasValidIdToken = idToken != null && idToken.trim().isNotEmpty;
@@ -535,8 +529,7 @@ class _LoginScreenState extends State<LoginScreen> {
               'No valid authentication tokens received from Google');
         }
 
-        // ✅ FIXED: Use correct method name (remove "Debug")
-        print('🔧 Calling API with correct method name...');
+        // Call API
         final apiResult = await ApiService.googleSignIn(
           idToken: hasValidIdToken ? idToken! : '',
           accessToken: hasValidAccessToken ? accessToken! : '',
@@ -550,29 +543,54 @@ class _LoginScreenState extends State<LoginScreen> {
         });
 
         if (apiResult['success'] == true) {
-          // ✅ FIXED: Access correct response structure
-          print('🔧 Accessing data from API result...');
           final data = apiResult['data'];
-          print('🔧 Data: $data');
 
-          if (data != null) {
+          // ✅ FIX: Check if this is a new user
+          if (data['is_new_user'] == true) {
+            // NEW USER - Redirect to signup with Google data
+            print('🔧 NEW USER DETECTED - Redirecting to signup');
+
+            final googleData = data['google_data'];
+
+            if (mounted) {
+              // Show message
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    'Welcome! Please complete your registration with PWD ID details.',
+                  ),
+                  backgroundColor: Colors.blue,
+                  duration: Duration(seconds: 3),
+                ),
+              );
+
+              // Navigate to signup screen
+              // Pass Google data so signup screen can pre-fill
+              Navigator.pushReplacementNamed(
+                context,
+                AppRoutes.candidateSignup,
+                arguments: {
+                  'isGoogleUser': true,
+                  'googleData': googleData,
+                  'googleIdToken': idToken,
+                },
+              );
+            }
+          } else {
+            // EXISTING USER - Normal login flow
+            print('🔧 EXISTING USER - Proceeding with login');
+
             final user = data['user'];
             final nextStep = data['next_step'];
 
-            print('🔧 User: $user');
-            print('🔧 Next Step: $nextStep');
-
             if (user != null) {
-              // ✅ FIXED: Get setup completion from user data
               final setupComplete = user['setup_complete'] == true;
-
-              print('🔧 Setup Complete: $setupComplete');
 
               // Store user data
               await ApiService.setCurrentUser(user);
 
-              // Show welcome message
               if (mounted) {
+                // Show welcome message
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
                     content:
@@ -581,7 +599,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 );
 
-                // Navigate based on setup completion or next_step
+                // Navigate based on setup completion
                 if (nextStep == 'dashboard' || setupComplete) {
                   _navigateToDashboard();
                 } else {
@@ -589,12 +607,9 @@ class _LoginScreenState extends State<LoginScreen> {
                 }
               }
             } else {
-              print('🔧 ERROR: User data is null');
+              print('🔧 ERROR: User data is null for existing user');
               throw Exception('User data not received from server');
             }
-          } else {
-            print('🔧 ERROR: Data is null');
-            throw Exception('No data received from server');
           }
         } else {
           if (mounted) {
@@ -611,31 +626,31 @@ class _LoginScreenState extends State<LoginScreen> {
           _isLoading = false;
         });
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(result.error ?? 'Google Sign-In failed'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(result.error ?? 'Google sign-in was cancelled'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
       }
     } catch (e) {
-      print('🔧 Google Sign-In Error: $e');
-
       setState(() {
         _isLoading = false;
       });
 
+      print('🔧 Google Sign-In Error: $e');
+
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Sign-in error: ${e.toString()}'),
+            content: Text('Google sign-in error: $e'),
             backgroundColor: Colors.red,
           ),
         );
       }
     }
-
-    print('🔧 === GOOGLE SIGN-IN COMPLETE ===');
   }
 
   /// Navigate to account setup

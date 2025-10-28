@@ -17,7 +17,9 @@ import 'dart:typed_data'; // Add this import for Uint8List
 /// Signup Screen - Mobile version of frontend/candidate/signup.php
 /// Complete 3-step signup process matching your web implementation
 class SignupScreen extends StatefulWidget {
-  const SignupScreen({super.key});
+  final Map<String, dynamic>? arguments;
+
+  const SignupScreen({super.key, this.arguments});
 
   @override
   State<SignupScreen> createState() => _SignupScreenState();
@@ -80,6 +82,7 @@ class _SignupScreenState extends State<SignupScreen> {
     super.initState();
     // Fetch disability types when screen loads
     _fetchDisabilityTypes();
+    _handleGoogleDataFromLogin();
   }
 
   @override
@@ -96,6 +99,49 @@ class _SignupScreenState extends State<SignupScreen> {
     _pwdIdController.dispose();
     _pwdIssuedDateController.dispose();
     super.dispose();
+  }
+
+  /// ✅ NEW METHOD: Handle Google data passed from login screen
+  void _handleGoogleDataFromLogin() {
+    if (widget.arguments != null) {
+      final isGoogleUser = widget.arguments!['isGoogleUser'] == true;
+      final googleData = widget.arguments!['googleData'];
+      final googleIdToken = widget.arguments!['googleIdToken'];
+
+      if (isGoogleUser && googleData != null) {
+        print('🔧 SIGNUP: Received Google data from login screen');
+        print('🔧 Google Data: $googleData');
+
+        setState(() {
+          _isGoogleUser = true;
+          _googleUserData = googleData;
+          _googleIdToken = googleIdToken;
+
+          // Pre-fill form fields
+          _firstNameController.text = googleData['first_name'] ?? '';
+          _lastNameController.text = googleData['last_name'] ?? '';
+          _emailController.text = googleData['email'] ?? '';
+        });
+
+        // Show welcome message and go directly to Step 2
+        Future.delayed(Duration(milliseconds: 500), () {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Welcome ${googleData['first_name']}! Please complete your profile.',
+                ),
+                backgroundColor: Colors.green,
+                duration: Duration(seconds: 3),
+              ),
+            );
+
+            // Skip Step 1 and go directly to Step 2 (profile completion)
+            _goToStep(2);
+          }
+        });
+      }
+    }
   }
 
   /// Fetch disability types from API

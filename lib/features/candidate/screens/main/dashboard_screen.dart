@@ -7,8 +7,9 @@ import 'applications_screen.dart';
 import 'jobs_screen.dart';
 import 'settings_screen.dart';
 import '../../../../../screens/test_api_screen.dart';
-import 'dart:convert'; // Add this if it's not already there
+import 'dart:convert';
 import '../../../../shared/widgets/tts_button.dart';
+import 'package:intl/intl.dart';
 
 class CandidateDashboardScreen extends StatefulWidget {
   const CandidateDashboardScreen({super.key});
@@ -1461,30 +1462,31 @@ class _HomePageState extends State<HomePage> {
   }
 
   String _formatDate(dynamic date) {
-    if (date == null) return 'Unknown';
+    // Handle null or empty values
+    if (date == null) return 'Date not available';
+
+    // Convert to string if needed
+    String dateString = date.toString().trim();
+    if (dateString.isEmpty || dateString.toLowerCase() == 'unknown') {
+      return 'Date not available';
+    }
 
     try {
+      // Parse the date string
       DateTime dateTime;
       if (date is String) {
         dateTime = DateTime.parse(date);
+      } else if (date is DateTime) {
+        dateTime = date;
       } else {
-        return date.toString();
+        return 'Date not available';
       }
 
-      final now = DateTime.now();
-      final difference = now.difference(dateTime);
-
-      if (difference.inDays > 7) {
-        return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
-      } else if (difference.inDays > 0) {
-        return '${difference.inDays} days ago';
-      } else if (difference.inHours > 0) {
-        return '${difference.inHours} hours ago';
-      } else {
-        return 'Just now';
-      }
+      // Format to match web: "November 2, 2025"
+      return DateFormat('MMMM d, yyyy').format(dateTime);
     } catch (e) {
-      return 'Unknown';
+      print('🚨 [Dashboard] Error parsing date: $dateString - $e');
+      return 'Date not available';
     }
   }
 

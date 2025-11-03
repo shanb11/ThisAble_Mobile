@@ -19,6 +19,9 @@ dependencies:
   
   # HTTP requests (compatible with google_fonts 4.0.4)
   http: ^0.13.6
+
+  # Date formatting (for consistent date display)
+  intl: ^0.18.1
   
   # Local storage (stable version)
   shared_preferences: ^2.1.2

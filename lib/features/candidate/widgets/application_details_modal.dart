@@ -828,6 +828,7 @@ class _ApplicationDetailsModalState extends State<ApplicationDetailsModal> {
         return 'Offered';
       case 'rejected':
         return 'Rejected';
+      // ✅ ADD THIS CASE
       case 'withdrawn':
         return 'Withdrawn';
       default:

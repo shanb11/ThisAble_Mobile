@@ -1398,7 +1398,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Helper Methods (from artifact, using existing colors)
   Widget _buildStatusBadge(String status) {
     Color bgColor;
     Color textColor;
@@ -1417,6 +1416,11 @@ class _HomePageState extends State<HomePage> {
         textColor = AppColors.warningYellow;
         displayText = 'Under Review';
         break;
+      case 'interview_scheduled':
+        bgColor = AppColors.primaryOrange.withOpacity(0.1);
+        textColor = AppColors.primaryOrange;
+        displayText = 'Interview';
+        break;
       case 'rejected':
         bgColor = AppColors.errorRed.withOpacity(0.1);
         textColor = AppColors.errorRed;
@@ -1426,6 +1430,12 @@ class _HomePageState extends State<HomePage> {
         bgColor = AppColors.successGreen.withOpacity(0.1);
         textColor = AppColors.successGreen;
         displayText = 'Hired';
+        break;
+      // ✅ ADD THIS CASE
+      case 'withdrawn':
+        bgColor = Colors.grey.withOpacity(0.1);
+        textColor = Colors.grey[700]!;
+        displayText = 'Withdrawn';
         break;
       default:
         bgColor = AppColors.textLight.withOpacity(0.1);
@@ -1465,14 +1475,39 @@ class _HomePageState extends State<HomePage> {
     // Handle null or empty values
     if (date == null) return 'Date not available';
 
-    // Convert to string if needed
+    // Convert to string
     String dateString = date.toString().trim();
     if (dateString.isEmpty || dateString.toLowerCase() == 'unknown') {
       return 'Date not available';
     }
 
+    // 🆕 CHECK IF ALREADY FORMATTED (contains month name)
+    // If it looks like "November 2, 2025" or "July 10, 2025", return as-is
+    final monthNames = [
+      'January',
+      'February',
+      'March',
+      'April',
+      'May',
+      'June',
+      'July',
+      'August',
+      'September',
+      'October',
+      'November',
+      'December'
+    ];
+
+    for (var month in monthNames) {
+      if (dateString.contains(month)) {
+        // Already formatted! Return as-is
+        print('✅ [Dashboard] Date already formatted: $dateString');
+        return dateString;
+      }
+    }
+
+    // Not formatted yet, try to parse and format
     try {
-      // Parse the date string
       DateTime dateTime;
       if (date is String) {
         dateTime = DateTime.parse(date);
@@ -1486,6 +1521,10 @@ class _HomePageState extends State<HomePage> {
       return DateFormat('MMMM d, yyyy').format(dateTime);
     } catch (e) {
       print('🚨 [Dashboard] Error parsing date: $dateString - $e');
+      // If parsing fails but string looks valid, return as-is
+      if (dateString.length > 5) {
+        return dateString;
+      }
       return 'Date not available';
     }
   }

@@ -117,6 +117,9 @@ class _HomePageState extends State<HomePage> {
   List<dynamic> _upcomingInterviews = [];
   List<dynamic> _suggestedJobs = [];
 
+  String? _userName; // 🆕 ADD THIS LINE
+  int _profileCompletionPercentage = 0; // 🆕 ADD THIS
+
   @override
   void initState() {
     super.initState();
@@ -143,7 +146,29 @@ class _HomePageState extends State<HomePage> {
           final stats = data['stats'];
           print('📊 [Dashboard] Stats received: $stats');
 
-          // DIRECT ASSIGNMENT - No type conversion needed since API returns integers
+          // Extract user info and profile completion
+          String? extractedName;
+          int extractedCompletion = 0;
+
+          try {
+            // Get user name
+            if (data['user_info'] != null &&
+                data['user_info']['first_name'] != null) {
+              extractedName = data['user_info']['first_name'];
+              print('🔧 [Dashboard] User name from API: $extractedName');
+            }
+
+            // Get profile completion
+            if (data['profile_completion'] != null &&
+                data['profile_completion']['percentage'] != null) {
+              extractedCompletion = data['profile_completion']['percentage'];
+              print(
+                  '🔧 [Dashboard] Profile completion from API: $extractedCompletion%');
+            }
+          } catch (e) {
+            print('🔧 [Dashboard] Error extracting user data: $e');
+          }
+
           setState(() {
             _statsData = {
               'applications_count': stats['applications_count'] ?? 0,
@@ -157,11 +182,16 @@ class _HomePageState extends State<HomePage> {
                 List<dynamic>.from(data['recent_applications'] ?? []);
             _upcomingInterviews =
                 List<dynamic>.from(data['upcoming_interviews'] ?? []);
+            _suggestedJobs = List<dynamic>.from(data['suggested_jobs'] ?? []);
 
-            _isLoadingStats = false; // ✅ Keep this
-            _isLoadingApplications = false; // 🚀 ADD this line
-            _isLoadingInterviews = false; // 🚀 ADD this line too
+            _userName = extractedName; // 🆕 ADD THIS
+            _profileCompletionPercentage = extractedCompletion; // 🆕 ADD THIS
+
+            _isLoadingStats = false;
           });
+
+          print(
+              '🔧 [Dashboard] Final state - Name: $_userName, Completion: $_profileCompletionPercentage%');
 
           print('✅ [Dashboard] Stats loaded successfully: $_statsData');
         } else {
@@ -619,10 +649,12 @@ class _HomePageState extends State<HomePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Welcome Greeting
-            const Text(
-              'Welcome Back! ✨👋',
-              style: TextStyle(
-                fontSize: 24,
+            Text(
+              _userName != null && _userName!.isNotEmpty
+                  ? 'Hi $_userName! ✨👋'
+                  : 'Welcome Back! ✨👋',
+              style: const TextStyle(
+                fontSize: 28,
                 fontWeight: FontWeight.w700,
                 color: Colors.white,
               ),
@@ -657,9 +689,9 @@ class _HomePageState extends State<HomePage> {
                           color: Colors.white70,
                         ),
                       ),
-                      const Text(
-                        '85%',
-                        style: TextStyle(
+                      Text(
+                        '$_profileCompletionPercentage%', // ✅ DYNAMIC
+                        style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
@@ -674,19 +706,36 @@ class _HomePageState extends State<HomePage> {
                       color: Colors.white.withOpacity(0.3),
                       borderRadius: BorderRadius.circular(3),
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          flex: 85,
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: accentColor, // Using existing orange
-                              borderRadius: BorderRadius.circular(3),
-                            ),
-                          ),
-                        ),
-                        const Expanded(flex: 15, child: SizedBox()),
-                      ],
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(3),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          final progressWidth = (constraints.maxWidth *
+                                  _profileCompletionPercentage /
+                                  100)
+                              .clamp(0.0, constraints.maxWidth);
+
+                          return Stack(
+                            children: [
+                              // Background (empty part)
+                              Container(
+                                height: 6,
+                                color: Colors.white.withOpacity(0.3),
+                              ),
+                              // Progress (filled part)
+                              if (_profileCompletionPercentage > 0)
+                                Container(
+                                  height: 6,
+                                  width: progressWidth,
+                                  decoration: BoxDecoration(
+                                    color: accentColor,
+                                    borderRadius: BorderRadius.circular(3),
+                                  ),
+                                ),
+                            ],
+                          );
+                        },
+                      ),
                     ),
                   ),
                   const SizedBox(height: 8),

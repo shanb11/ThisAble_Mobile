@@ -743,7 +743,7 @@ class ApiService {
       if (kIsWeb) {
         if (file.bytes != null) {
           request.files.add(http.MultipartFile.fromBytes(
-            'resume',
+            'resume_file',
             file.bytes!,
             filename: file.name,
           ));

@@ -2092,10 +2092,13 @@ class _SignupScreenState extends State<SignupScreen> {
       if (_isGoogleUser) {
         // Google user - complete profile
         result = await ApiService.googleSignIn(
-          idToken: _googleIdToken!,
-          accessToken: _googleIdToken, // ← ADD THIS LINE!
+          idToken: _googleIdToken ?? '',
+          accessToken: '',
           action: 'complete_profile',
           additionalData: {
+            'email': _emailController.text.trim(), // ← ADD THIS
+            'firstName': _firstNameController.text.trim(), // ← ADD THIS
+            'lastName': _lastNameController.text.trim(), // ← ADD THIS
             'phone': _phoneController.text.trim(),
             'disability': int.parse(_selectedDisabilityType!),
             'pwdIdNumber': _pwdIdController.text.trim(),

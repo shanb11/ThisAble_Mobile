@@ -1,7 +1,6 @@
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/services/network_discovery_service.dart';
 
-// ✅ PRODUCTION API URL (Vercel) - NEW!
 const String PRODUCTION_API_URL =
     'https://thisable-production.up.railway.app/api';
 const bool USE_PRODUCTION =

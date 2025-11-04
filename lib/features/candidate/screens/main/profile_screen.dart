@@ -5,6 +5,10 @@ import '../../widgets/work_preferences_bottom_sheet.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart'; // For kIsWeb
 import '../../widgets/resume_viewer_screen.dart';
+import '../../widgets/profile_info_item.dart';
+import '../../widgets/personal_information_section.dart';
+import '../../widgets/personal_info_edit_form.dart';
+import '../../widgets/bio_section.dart';
 
 class CandidateProfileScreen extends StatefulWidget {
   const CandidateProfileScreen({super.key});
@@ -54,6 +58,11 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
   final TextEditingController _locationController = TextEditingController();
   final TextEditingController _bioController = TextEditingController();
 
+  final TextEditingController _middleNameController = TextEditingController();
+  final TextEditingController _suffixController = TextEditingController();
+  final TextEditingController _cityController = TextEditingController();
+  final TextEditingController _provinceController = TextEditingController();
+
   Map<String, dynamic> _workPreferences = {};
 
   @override
@@ -88,6 +97,11 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
     _phoneController.dispose();
     _locationController.dispose();
     _bioController.dispose();
+
+    _middleNameController.dispose();
+    _suffixController.dispose();
+    _cityController.dispose();
+    _provinceController.dispose();
     super.dispose();
   }
 
@@ -112,9 +126,13 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
           final personalInfo = data['personal_info'] ?? {};
           _profileData = {
             'first_name': personalInfo['first_name'] ?? '',
+            'middle_name': personalInfo['middle_name'] ?? '', // ADD
             'last_name': personalInfo['last_name'] ?? '',
+            'suffix': personalInfo['suffix'] ?? '', // ADD
             'email': personalInfo['email'] ?? '',
             'phone': personalInfo['contact_number'] ?? '',
+            'city': personalInfo['city'] ?? '', // ADD
+            'province': personalInfo['province'] ?? '', // ADD
             'location': personalInfo['preferred_location'] ?? '',
             'bio': personalInfo['bio'] ?? '',
             'profile_photo': personalInfo['profile_photo_path'],
@@ -258,9 +276,15 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
 
   void _populateControllers() {
     _firstNameController.text = (_profileData['first_name'] ?? '').toString();
+    _middleNameController.text =
+        (_profileData['middle_name'] ?? '').toString(); // ADD
     _lastNameController.text = (_profileData['last_name'] ?? '').toString();
+    _suffixController.text = (_profileData['suffix'] ?? '').toString(); // ADD
     _emailController.text = (_profileData['email'] ?? '').toString();
     _phoneController.text = (_profileData['phone'] ?? '').toString();
+    _cityController.text = (_profileData['city'] ?? '').toString(); // ADD
+    _provinceController.text =
+        (_profileData['province'] ?? '').toString(); // ADD
     _locationController.text = (_profileData['location'] ?? '').toString();
     _bioController.text = (_profileData['bio'] ?? '').toString();
   }
@@ -274,9 +298,13 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
       // FIXED: Prepare data for API
       final profileData = {
         'first_name': _firstNameController.text.trim(),
+        'middle_name': _middleNameController.text.trim(), // ADD
         'last_name': _lastNameController.text.trim(),
+        'suffix': _suffixController.text.trim(), // ADD
         'email': _emailController.text.trim(),
         'phone': _phoneController.text.trim(),
+        'city': _cityController.text.trim(), // ADD
+        'province': _provinceController.text.trim(), // ADD
         'location': _locationController.text.trim(),
         'bio': _bioController.text.trim(),
         'section': 'personal_info',
@@ -292,9 +320,14 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
         // FIXED: Update local data immediately
         setState(() {
           _profileData['first_name'] = _firstNameController.text.trim();
+          _profileData['middle_name'] =
+              _middleNameController.text.trim(); // ADD
           _profileData['last_name'] = _lastNameController.text.trim();
+          _profileData['suffix'] = _suffixController.text.trim(); // ADD
           _profileData['email'] = _emailController.text.trim();
           _profileData['phone'] = _phoneController.text.trim();
+          _profileData['city'] = _cityController.text.trim(); // ADD
+          _profileData['province'] = _provinceController.text.trim(); // ADD
           _profileData['location'] = _locationController.text.trim();
           _profileData['bio'] = _bioController.text.trim();
 

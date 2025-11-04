@@ -752,49 +752,76 @@ class _HomePageState extends State<HomePage> {
             const SizedBox(height: 20),
 
             // Action Buttons
+            // Action Buttons - Matching Web Design
             Row(
               children: [
+                // "+ Add Skills" button (matching web)
                 Expanded(
-                  child: ElevatedButton(
+                  child: OutlinedButton.icon(
                     onPressed: () {
+                      // Navigate to profile skills section
+                      final dashboardState = context.findAncestorStateOfType<
+                          _CandidateDashboardScreenState>();
+                      dashboardState?.updateCurrentIndex(4); // Profile tab
+
+                      // TODO: When on profile, auto-scroll/focus on skills section
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: const Text(
+                              'Navigate to Skills section in Profile'),
+                          backgroundColor: primaryColor,
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.add, size: 16),
+                    label: const Text(
+                      'Add Skills',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      side: const BorderSide(color: Colors.white, width: 1.5),
+                      backgroundColor: Colors.white.withOpacity(0.1),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 14, horizontal: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+
+                // "✏️ Edit Profile" button (matching web)
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      // Navigate to profile
                       final dashboardState = context.findAncestorStateOfType<
                           _CandidateDashboardScreenState>();
                       dashboardState?.updateCurrentIndex(4); // Profile tab
                     },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.white,
-                      foregroundColor: primaryColor,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                    icon: const Icon(Icons.edit_outlined, size: 16),
+                    label: const Text(
+                      'Edit Profile',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
                       ),
                     ),
-                    child: const Text(
-                      'Complete Profile',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () {
-                      final dashboardState = context.findAncestorStateOfType<
-                          _CandidateDashboardScreenState>();
-                      dashboardState?.updateCurrentIndex(2); // Jobs tab
-                    },
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.white,
-                      side: BorderSide(color: Colors.white.withOpacity(0.3)),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: const BorderSide(color: Colors.white, width: 1.5),
+                      backgroundColor: Colors.white.withOpacity(0.1),
+                      padding: const EdgeInsets.symmetric(
+                          vertical: 14, horizontal: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
-                    ),
-                    child: const Text(
-                      'Browse Jobs',
-                      style: TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ),
                 ),

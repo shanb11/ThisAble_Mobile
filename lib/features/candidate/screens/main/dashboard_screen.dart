@@ -1415,22 +1415,22 @@ class _HomePageState extends State<HomePage> {
                                 ],
                               ),
                             ),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: primaryColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                '90% Match',
-                                style: TextStyle(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.w600,
-                                  color: primaryColor,
-                                ),
-                              ),
-                            ),
+                            // Container(
+                            //   padding: const EdgeInsets.symmetric(
+                            //       horizontal: 8, vertical: 4),
+                            //   decoration: BoxDecoration(
+                            //     color: primaryColor.withOpacity(0.1),
+                            //     borderRadius: BorderRadius.circular(8),
+                            //   ),
+                            //   child: Text(
+                            //     '90% Match',
+                            //     style: TextStyle(
+                            //       fontSize: 10,
+                            //       fontWeight: FontWeight.w600,
+                            //       color: primaryColor,
+                            //     ),
+                            //   ),
+                            // ),
                           ],
                         ),
                         const SizedBox(height: 12),
@@ -1445,24 +1445,24 @@ class _HomePageState extends State<HomePage> {
                                 ),
                               ),
                             ),
-                            ElevatedButton(
-                              onPressed: () {
-                                // Apply to job logic
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: primaryColor,
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(
-                                    horizontal: 16, vertical: 8),
-                                minimumSize: Size.zero,
-                                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                              ),
-                              child: const Text(
-                                'Apply Now',
-                                style: TextStyle(
-                                    fontSize: 12, fontWeight: FontWeight.w600),
-                              ),
-                            ),
+                            // ElevatedButton(
+                            //   onPressed: () {
+                            //     // Apply to job logic
+                            //   },
+                            //   style: ElevatedButton.styleFrom(
+                            //     backgroundColor: primaryColor,
+                            //     foregroundColor: Colors.white,
+                            //     padding: const EdgeInsets.symmetric(
+                            //         horizontal: 16, vertical: 8),
+                            //     minimumSize: Size.zero,
+                            //     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            //   ),
+                            //   child: const Text(
+                            //     'Apply Now',
+                            //     style: TextStyle(
+                            //         fontSize: 12, fontWeight: FontWeight.w600),
+                            //   ),
+                            // ),
                           ],
                         ),
                       ],

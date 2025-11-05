@@ -202,10 +202,7 @@ class LandingNavbar extends StatelessWidget {
   Widget _buildSignInButton(BuildContext context) {
     return SignInButton(
       // Using YOUR actual SignInButton component
-      onPressed: () {
-        // Show sign-in options (matches your web sign-in dropdown)
-        _showSignInOptions(context);
-      },
+      onPressed: () => AppRoutes.goToCandidateLogin(context),
     );
   }
 

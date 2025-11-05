@@ -95,10 +95,10 @@ class InclusiveWorkplaceSection extends StatelessWidget {
 
         const SizedBox(height: 30), // matches margin-bottom: 30px
 
-        // Post Job Button (matches your web #post-job-btn .btn-primary)
-        PostJobButton(
-          onPressed: onPostJobPressed,
-        ),
+        // // Post Job Button (matches your web #post-job-btn .btn-primary)
+        // PostJobButton(
+        //   onPressed: onPostJobPressed,
+        // ),
       ],
     );
   }

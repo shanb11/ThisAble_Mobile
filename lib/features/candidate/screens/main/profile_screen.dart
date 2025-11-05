@@ -461,88 +461,156 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
     );
   }
 
-  // REPLACE the _buildProfileHeader() method in profile_screen.dart (around line 290)
   Widget _buildProfileHeader() {
-    return SliverAppBar(
-      expandedHeight: 320, // INCREASED from 300 to 350 to fix overflow
-      floating: false,
-      pinned: true,
-      backgroundColor: primaryColor,
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [primaryColor, sidebarColor],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
+    return SliverToBoxAdapter(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 5, 20, 10),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 10),
-                  // Profile Photo
-                  Stack(
-                    children: [
-                      Container(
-                        width: 90,
-                        height: 90,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 4),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.2),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
+          ],
+        ),
+        margin: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            // 1️⃣ COVER PHOTO SECTION (matches web .profile-cover)
+            Stack(
+              clipBehavior: Clip.none,
+              children: [
+                // Cover photo with gradient
+                Container(
+                  height: 200,
+                  decoration: BoxDecoration(
+                    borderRadius: const BorderRadius.only(
+                      topLeft: Radius.circular(12),
+                      topRight: Radius.circular(12),
+                    ),
+                    gradient: LinearGradient(
+                      colors: [primaryColor, sidebarColor],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                  ),
+                ),
+
+                // Edit cover button (top-right)
+                Positioned(
+                  top: 15,
+                  right: 15,
+                  child: GestureDetector(
+                    onTap: () {
+                      // TODO: Implement cover photo edit
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Cover photo editing coming soon'),
+                          backgroundColor: Colors.orange,
+                          behavior: SnackBarBehavior.floating,
+                          duration: Duration(seconds: 2),
                         ),
-                        child: CircleAvatar(
-                          radius: 42,
-                          backgroundColor: Colors.white,
-                          backgroundImage: _profileData['profile_photo'] != null
-                              ? NetworkImage(_profileData['profile_photo'])
-                              : null,
-                          child: _profileData['profile_photo'] == null
-                              ? Text(
-                                  _getInitials(),
-                                  style: const TextStyle(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.bold,
-                                    color: primaryColor,
-                                  ),
-                                )
-                              : null,
-                        ),
+                      );
+                    },
+                    child: Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        shape: BoxShape.circle,
                       ),
-                      Positioned(
-                        bottom: 0,
-                        right: 0,
-                        child: GestureDetector(
-                          onTap: _editProfilePhoto,
-                          child: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: const BoxDecoration(
-                              color: accentColor,
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(
-                              Icons.camera_alt,
-                              color: Colors.white,
-                              size: 16,
+                      child: const Icon(
+                        Icons.camera_alt,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ),
+
+                // 2️⃣ PROFILE PICTURE (overlapping cover - matches web .profile-picture)
+                Positioned(
+                  bottom: -75, // Overlaps cover by 75px
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Stack(
+                      children: [
+                        Container(
+                          width: 150,
+                          height: 150,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 4),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: CircleAvatar(
+                            radius: 73,
+                            backgroundColor: Colors.white,
+                            backgroundImage: _profileData['profile_photo'] !=
+                                    null
+                                ? NetworkImage(_profileData['profile_photo'])
+                                : null,
+                            child: _profileData['profile_photo'] == null
+                                ? Text(
+                                    _getInitials(),
+                                    style: const TextStyle(
+                                      fontSize: 48,
+                                      fontWeight: FontWeight.bold,
+                                      color: primaryColor,
+                                    ),
+                                  )
+                                : null,
+                          ),
+                        ),
+
+                        // Camera icon overlay (bottom-right of profile photo)
+                        Positioned(
+                          bottom: 5,
+                          right: 5,
+                          child: GestureDetector(
+                            onTap: _editProfilePhoto,
+                            child: Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: accentColor,
+                                shape: BoxShape.circle,
+                                border:
+                                    Border.all(color: Colors.white, width: 2),
+                              ),
+                              child: const Icon(
+                                Icons.camera_alt,
+                                color: Colors.white,
+                                size: 18,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                  const SizedBox(height: 16),
+                ),
+              ],
+            ),
 
-                  // User Info
+            // 3️⃣ WHITE SECTION BELOW (matches web .profile-info)
+            const SizedBox(height: 85), // Space for overlapping profile picture
+
+            // Profile Details (Name, Bio, Button)
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  // Name
                   Text(
                     '${(_profileData['first_name'] ?? '').toString()} ${(_profileData['last_name'] ?? '').toString()}'
                             .trim()
@@ -551,96 +619,292 @@ class _CandidateProfileScreenState extends State<CandidateProfileScreen>
                         : '${(_profileData['first_name'] ?? '').toString()} ${(_profileData['last_name'] ?? '').toString()}'
                             .trim(),
                     style: const TextStyle(
-                      color: Colors.white,
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
+                      color: primaryColor,
                     ),
+                    textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    _profileData['email'] ?? '',
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.9),
-                      fontSize: 16,
+
+                  const SizedBox(height: 8),
+
+                  // Headline/Bio (if exists)
+                  if (_profileData['bio'] != null &&
+                      _profileData['bio'].toString().isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Text(
+                        _profileData['bio'],
+                        style: TextStyle(
+                          fontSize: 16,
+                          color: Colors.grey[600],
+                        ),
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
+
                   const SizedBox(height: 20),
 
-                  // FIXED: Profile Completion Section
-                  Container(
-                    width: double.infinity, // FIXED: Ensure full width
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white.withOpacity(0.2)),
+                  // "Edit Profile" Button (matches web button)
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      // Scroll to first editable section
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Scroll down to edit sections'),
+                          backgroundColor: primaryColor,
+                          behavior: SnackBarBehavior.floating,
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.edit, size: 18),
+                    label: const Text(
+                      'Edit Profile',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                    child: Column(
-                      // FIXED: Changed from Row to Column for better space
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Text(
-                              'Profile Completion',
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.9),
-                                fontSize: 14,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                            // FIXED: Show percentage prominently
-                            AnimatedBuilder(
-                              animation: _profileCompletionAnimation,
-                              builder: (context, child) {
-                                return Text(
-                                  '${(_profileCompletionAnimation.value * _profileCompletion).round()}%',
-                                  style: const TextStyle(
-                                    color: secondaryColor,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                );
-                              },
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        // FIXED: Progress bar with proper constraints
-                        AnimatedBuilder(
-                          animation: _profileCompletionAnimation,
-                          builder: (context, child) {
-                            return ClipRRect(
-                              borderRadius: BorderRadius.circular(3),
-                              child: LinearProgressIndicator(
-                                value: _profileCompletionAnimation.value,
-                                backgroundColor: Colors.white.withOpacity(0.2),
-                                valueColor: const AlwaysStoppedAnimation<Color>(
-                                    secondaryColor),
-                                minHeight: 6,
-                              ),
-                            );
-                          },
-                        ),
-                        const SizedBox(height: 4),
-                        // FIXED: Add helpful text
-                        Text(
-                          _getCompletionText(),
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.7),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(25),
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
-          ),
+          ],
         ),
       ),
+    );
+  }
+
+  Widget _buildProfileCompletionCard() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[300]!),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header with title and percentage
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Profile Completion',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.w600,
+                  color: primaryColor,
+                ),
+              ),
+              AnimatedBuilder(
+                animation: _profileCompletionAnimation,
+                builder: (context, child) {
+                  return Text(
+                    '${(_profileCompletionAnimation.value * _profileCompletion).round()}%',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: primaryColor,
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 15),
+
+          // Progress bar
+          AnimatedBuilder(
+            animation: _profileCompletionAnimation,
+            builder: (context, child) {
+              return ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: _profileCompletionAnimation.value,
+                  backgroundColor:
+                      const Color(0x33257180), // primaryColor with 20% opacity
+                  valueColor: const AlwaysStoppedAnimation<Color>(primaryColor),
+                  minHeight: 8,
+                ),
+              );
+            },
+          ),
+
+          const SizedBox(height: 15),
+
+          // Completion tips section
+          if (_profileCompletion < 100)
+            Container(
+              padding: const EdgeInsets.all(15),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.info_outline,
+                        color: Colors.blue[700],
+                        size: 18,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          _getCompletionText(),
+                          style: TextStyle(
+                            color: Colors.grey[700],
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+
+                  const SizedBox(height: 12),
+
+                  // Checklist of incomplete sections
+                  _buildCompletionChecklist(),
+                ],
+              ),
+            )
+          else
+            // Celebration message when 100% complete
+            Container(
+              padding: const EdgeInsets.all(15),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    const Color(0x1AFD8B51), // accentColor with 10% opacity
+                    const Color(0x1A257180), // primaryColor with 10% opacity
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.check_circle,
+                    color: Colors.green[700],
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    '🎉 Congratulations! Your profile is 100% complete!',
+                    style: TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                      color: primaryColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Build checklist of incomplete sections
+  Widget _buildCompletionChecklist() {
+    final List<Map<String, dynamic>> checklistItems = [
+      {
+        'section': 'Personal Information',
+        'completed': _profileData['first_name'] != null &&
+            _profileData['first_name'].toString().isNotEmpty,
+        'weight': '20%',
+      },
+      {
+        'section': 'Skills',
+        'completed': _skillsList.isNotEmpty && _skillsList.length >= 3,
+        'weight': '15%',
+      },
+      {
+        'section': 'Work Preferences',
+        'completed': _profileData['work_arrangement'] != null,
+        'weight': '15%',
+      },
+      {
+        'section': 'Accessibility Needs',
+        'completed': _accommodationsList.isNotEmpty,
+        'weight': '10%',
+      },
+      {
+        'section': 'Education History',
+        'completed': _educationList.isNotEmpty,
+        'weight': '15%',
+      },
+      {
+        'section': 'Work Experience',
+        'completed': _experienceList.isNotEmpty,
+        'weight': '15%',
+      },
+      {
+        'section': 'Resume Upload',
+        'completed': _resumeUrl.isNotEmpty,
+        'weight': '10%',
+      },
+    ];
+
+    return Column(
+      children: checklistItems
+          .where((item) => !item['completed'])
+          .take(3) // Show only first 3 incomplete items
+          .map((item) => Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Icon(
+                      item['completed']
+                          ? Icons.check_circle
+                          : Icons.radio_button_unchecked,
+                      size: 16,
+                      color: item['completed']
+                          ? Colors.green[700]
+                          : Colors.grey[400],
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${item['section']} (${item['weight']})',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey[700],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ))
+          .toList(),
     );
   }
 

@@ -104,8 +104,8 @@ class LandingFooter extends StatelessWidget {
         _buildFooterLink('Browse Jobs', () {
           // Will implement navigation
         }),
-        _buildFooterLink('Career Resources', () {}),
-        _buildFooterLink('Job Alerts', () {}),
+        // _buildFooterLink('Career Resources', () {}),
+        // _buildFooterLink('Job Alerts', () {}),
       ],
     );
   }
@@ -124,8 +124,8 @@ class LandingFooter extends StatelessWidget {
         _buildFooterLink('Post a Job', () {
           // Will implement post job modal
         }),
-        _buildFooterLink('Talent Search', () {}),
-        _buildFooterLink('Employer Resources', () {}),
+        // _buildFooterLink('Talent Search', () {}),
+        // _buildFooterLink('Employer Resources', () {}),
       ],
     );
   }
@@ -141,11 +141,11 @@ class LandingFooter extends StatelessWidget {
         const SizedBox(height: 20),
 
         // Contact Links (matches your web footer links)
-        _buildFooterLink('Help Center', () {}),
+        // _buildFooterLink('Help Center', () {}),
         _buildFooterLink('About Us', () {
           // Will implement about navigation
         }),
-        _buildFooterLink('Privacy Policy', () {}),
+        // _buildFooterLink('Privacy Policy', () {}),
       ],
     );
   }

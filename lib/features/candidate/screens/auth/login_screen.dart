@@ -7,7 +7,7 @@ import '../../../../shared/widgets/custom_text_field.dart';
 import '../../../../config/routes.dart';
 import '../../../../core/utils/form_validators.dart';
 import '../../modals/forgot_password_modal.dart';
-import '../../modals/selection_modal.dart';
+//import '../../modals/selection_modal.dart';
 import '../../../../core/services/api_service.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import '../../../../core/utils/platform_utils.dart';
@@ -418,7 +418,7 @@ class _LoginScreenState extends State<LoginScreen> {
           ),
         ),
         GestureDetector(
-          onTap: _showSelectionModal,
+          onTap: () => AppRoutes.goToCandidateSignup(context),
           child: Text(
             'Sign up',
             style: GoogleFonts.inter(
@@ -732,12 +732,12 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 
   /// Show selection modal (candidate vs employer)
-  void _showSelectionModal() {
-    showDialog(
-      context: context,
-      builder: (context) => const SelectionModal(),
-    );
-  }
+  // void _showSelectionModal() {
+  //   showDialog(
+  //     context: context,
+  //     builder: (context) => const SelectionModal(),
+  //   );
+  // }
 // SIMPLE HTTP TEST - Add this to your login_screen.dart
 // This version uses your existing imports and methods
 

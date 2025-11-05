@@ -192,9 +192,9 @@ class _CandidateSettingsScreenState extends State<CandidateSettingsScreen>
             padding: const EdgeInsets.all(16),
             child: Column(
               children: [
-                _buildAccountSection(),
+                //_buildAccountSection(),
                 const SizedBox(height: 16),
-                _buildPreferencesSection(),
+                //_buildPreferencesSection(),
                 const SizedBox(height: 16),
                 _buildSecuritySection(),
                 const SizedBox(height: 16),
@@ -235,59 +235,59 @@ class _CandidateSettingsScreenState extends State<CandidateSettingsScreen>
     );
   }
 
-  Widget _buildAccountSection() {
-    return _buildSettingsCard(
-      title: 'Account',
-      icon: Icons.account_circle,
-      children: [
-        _buildSettingsItem(
-          icon: Icons.notifications,
-          title: 'Notifications',
-          subtitle: 'Manage your notification preferences',
-          onTap: () => _navigateToView('notifications'),
-        ),
-        _buildSettingsItem(
-          icon: Icons.privacy_tip,
-          title: 'Privacy',
-          subtitle: 'Control your privacy settings',
-          onTap: () => _navigateToView('privacy'),
-        ),
-        _buildSettingsItem(
-          icon: Icons.display_settings,
-          title: 'Display',
-          subtitle: 'Theme, font size, and display options',
-          onTap: () => _navigateToView('display'),
-        ),
-      ],
-    );
-  }
+  // Widget _buildAccountSection() {
+  //   return _buildSettingsCard(
+  //     title: 'Account',
+  //     icon: Icons.account_circle,
+  //     children: [
+  //       _buildSettingsItem(
+  //         icon: Icons.notifications,
+  //         title: 'Notifications',
+  //         subtitle: 'Manage your notification preferences',
+  //         onTap: () => _navigateToView('notifications'),
+  //       ),
+  //       _buildSettingsItem(
+  //         icon: Icons.privacy_tip,
+  //         title: 'Privacy',
+  //         subtitle: 'Control your privacy settings',
+  //         onTap: () => _navigateToView('privacy'),
+  //       ),
+  //       _buildSettingsItem(
+  //         icon: Icons.display_settings,
+  //         title: 'Display',
+  //         subtitle: 'Theme, font size, and display options',
+  //         onTap: () => _navigateToView('display'),
+  //       ),
+  //     ],
+  //   );
+  // }
 
-  Widget _buildPreferencesSection() {
-    return _buildSettingsCard(
-      title: 'Preferences',
-      icon: Icons.tune,
-      children: [
-        _buildSettingsItem(
-          icon: Icons.work_outline,
-          title: 'Job Alerts',
-          subtitle: 'Customize your job alert preferences',
-          onTap: () => _navigateToView('job_alerts'),
-        ),
-        _buildSettingsItem(
-          icon: Icons.assignment,
-          title: 'Application Settings',
-          subtitle: 'Manage application preferences',
-          onTap: () => _navigateToView('application_settings'),
-        ),
-        _buildSettingsItem(
-          icon: Icons.accessible,
-          title: 'Accessibility',
-          subtitle: 'Accessibility and ease of use options',
-          onTap: () => _navigateToView('accessibility'),
-        ),
-      ],
-    );
-  }
+  // Widget _buildPreferencesSection() {
+  //   return _buildSettingsCard(
+  //     title: 'Preferences',
+  //     icon: Icons.tune,
+  //     children: [
+  //       _buildSettingsItem(
+  //         icon: Icons.work_outline,
+  //         title: 'Job Alerts',
+  //         subtitle: 'Customize your job alert preferences',
+  //         onTap: () => _navigateToView('job_alerts'),
+  //       ),
+  //       _buildSettingsItem(
+  //         icon: Icons.assignment,
+  //         title: 'Application Settings',
+  //         subtitle: 'Manage application preferences',
+  //         onTap: () => _navigateToView('application_settings'),
+  //       ),
+  //       _buildSettingsItem(
+  //         icon: Icons.accessible,
+  //         title: 'Accessibility',
+  //         subtitle: 'Accessibility and ease of use options',
+  //         onTap: () => _navigateToView('accessibility'),
+  //       ),
+  //     ],
+  //   );
+  // }
 
   Widget _buildSecuritySection() {
     return _buildSettingsCard(
@@ -316,18 +316,18 @@ class _CandidateSettingsScreenState extends State<CandidateSettingsScreen>
       title: 'Support',
       icon: Icons.help,
       children: [
-        _buildSettingsItem(
-          icon: Icons.help_outline,
-          title: 'Help Center',
-          subtitle: 'Get help and support',
-          onTap: _openHelpCenter,
-        ),
-        _buildSettingsItem(
-          icon: Icons.feedback,
-          title: 'Send Feedback',
-          subtitle: 'Help us improve the app',
-          onTap: _sendFeedback,
-        ),
+        // _buildSettingsItem(
+        //   icon: Icons.help_outline,
+        //   title: 'Help Center',
+        //   subtitle: 'Get help and support',
+        //   onTap: _openHelpCenter,
+        // ),
+        // _buildSettingsItem(
+        //   icon: Icons.feedback,
+        //   title: 'Send Feedback',
+        //   subtitle: 'Help us improve the app',
+        //   onTap: _sendFeedback,
+        // ),
         _buildSettingsItem(
           icon: Icons.info_outline,
           title: 'About',
@@ -1091,7 +1091,7 @@ class _CandidateSettingsScreenState extends State<CandidateSettingsScreen>
 
                   // Use pushNamedAndRemoveUntil to clear navigation stack
                   Navigator.of(context).pushNamedAndRemoveUntil(
-                    '/candidate/login',
+                    '/',
                     (route) => false,
                   );
 

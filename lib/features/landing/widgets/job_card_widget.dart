@@ -166,24 +166,24 @@ class JobCardWidget extends StatelessWidget {
                   ),
 
                   // Apply Button
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      onApply();
-                    },
-                    icon: const Icon(Icons.send, size: 16),
-                    label: const Text('Apply'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryOrange,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
+                  // ElevatedButton.icon(
+                  //   onPressed: () {
+                  //     onApply();
+                  //   },
+                  //   icon: const Icon(Icons.send, size: 16),
+                  //   label: const Text('Apply'),
+                  //   style: ElevatedButton.styleFrom(
+                  //     backgroundColor: AppColors.primaryOrange,
+                  //     foregroundColor: Colors.white,
+                  //     padding: const EdgeInsets.symmetric(
+                  //       horizontal: 16,
+                  //       vertical: 8,
+                  //     ),
+                  //     shape: RoundedRectangleBorder(
+                  //       borderRadius: BorderRadius.circular(8),
+                  //     ),
+                  //   ),
+                  // ),
                 ],
               ),
             ],

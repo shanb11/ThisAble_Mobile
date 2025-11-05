@@ -798,29 +798,29 @@ class _CandidateJobListingsScreenState extends State<CandidateJobListingsScreen>
                     ],
                   ),
                 ),
-                // ✨ NEW: Save button
-                IconButton(
-                  onPressed: () => _toggleJobSave(job),
-                  icon: Icon(
-                    isSaved ? Icons.bookmark : Icons.bookmark_border,
-                    color: isSaved ? accentColor : Colors.grey,
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: TTSButton(
+                    text: _buildJobCardTTS(job),
+                    tooltip: 'Read job details',
+                    isIconOnly: false,
+                    size: 32,
                   ),
                 ),
+                // ✨ NEW: Save button
+                // IconButton(
+                //   onPressed: () => _toggleJobSave(job),
+                //   icon: Icon(
+                //     isSaved ? Icons.bookmark : Icons.bookmark_border,
+                //     color: isSaved ? accentColor : Colors.grey,
+                //   ),
+                // ),
               ],
             ),
             const SizedBox(height: 12),
 
             // Inside your job card widget, add this button
-            Positioned(
-              top: 8,
-              right: 8,
-              child: TTSButton(
-                text: _buildJobCardTTS(job),
-                tooltip: 'Read job details',
-                isIconOnly: false,
-                size: 32,
-              ),
-            ),
 
             // Job details row
             Row(
@@ -1482,26 +1482,26 @@ class EnhancedJobDetailsModal extends StatelessWidget {
             ),
             child: Row(
               children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    onPressed: onSave,
-                    icon:
-                        Icon(isSaved ? Icons.bookmark : Icons.bookmark_border),
-                    label: Text(isSaved ? 'Saved' : 'Save'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF257180),
-                      side: const BorderSide(color: Color(0xFF257180)),
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                  ),
-                ),
+                // Expanded(
+                //   child: OutlinedButton.icon(
+                //     onPressed: onSave,
+                //     icon:
+                //         Icon(isSaved ? Icons.bookmark : Icons.bookmark_border),
+                //     label: Text(isSaved ? 'Saved' : 'Save'),
+                //     style: OutlinedButton.styleFrom(
+                //       foregroundColor: const Color(0xFF257180),
+                //       side: const BorderSide(color: Color(0xFF257180)),
+                //       padding: const EdgeInsets.symmetric(vertical: 12),
+                //     ),
+                //   ),
+                // ),
                 const SizedBox(width: 12),
                 Expanded(
                   flex: 2,
                   child: ElevatedButton(
                     onPressed: onApply,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFD8B51),
+                      backgroundColor: const Color(0xFF257180),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                       shape: RoundedRectangleBorder(
@@ -1661,7 +1661,7 @@ class _EnhancedApplicationModalState extends State<EnhancedApplicationModal> {
           Container(
             padding: const EdgeInsets.all(20),
             decoration: const BoxDecoration(
-              color: Color(0xFFFD8B51),
+              color: Color(0xFF257180),
               borderRadius: BorderRadius.only(
                 topLeft: Radius.circular(20),
                 topRight: Radius.circular(20),
@@ -1719,7 +1719,7 @@ class _EnhancedApplicationModalState extends State<EnhancedApplicationModal> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFD8B51).withOpacity(0.1),
+                      color: const Color(0xFF257180).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
                         color: const Color(0xFFFD8B51).withOpacity(0.3),
@@ -1773,12 +1773,12 @@ class _EnhancedApplicationModalState extends State<EnhancedApplicationModal> {
                             ],
                           ),
                         ),
-                        TextButton(
-                          onPressed: () {
-                            // TODO: View resume functionality
-                          },
-                          child: const Text('View'),
-                        ),
+                        // TextButton(
+                        //   onPressed: () {
+                        //     // TODO: View resume functionality
+                        //   },
+                        //   child: const Text('View'),
+                        // ),
                       ],
                     ),
                   ),
@@ -1900,25 +1900,25 @@ class _EnhancedApplicationModalState extends State<EnhancedApplicationModal> {
                   const SizedBox(height: 24),
 
                   // Accessibility Needs (key PWD feature from your web!)
-                  const Text(
-                    'Accessibility Needs',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _accessibilityNeedsController,
-                    decoration: const InputDecoration(
-                      hintText:
-                          'Please share any accessibility accommodations you may need during the interview process...',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.all(12),
-                    ),
-                    maxLines: 3,
-                  ),
+                  // const Text(
+                  //   'Accessibility Needs',
+                  //   style: TextStyle(
+                  //     fontSize: 16,
+                  //     fontWeight: FontWeight.w600,
+                  //     color: Colors.black87,
+                  //   ),
+                  // ),
+                  // const SizedBox(height: 8),
+                  // TextField(
+                  //   controller: _accessibilityNeedsController,
+                  //   decoration: const InputDecoration(
+                  //     hintText:
+                  //         'Please share any accessibility accommodations you may need during the interview process...',
+                  //     border: OutlineInputBorder(),
+                  //     contentPadding: EdgeInsets.all(12),
+                  //   ),
+                  //   maxLines: 3,
+                  // ),
                 ],
               ),
             ),
@@ -1952,7 +1952,7 @@ class _EnhancedApplicationModalState extends State<EnhancedApplicationModal> {
                   child: ElevatedButton(
                     onPressed: _isSubmitting ? null : _submitApplication,
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFFD8B51),
+                      backgroundColor: const Color(0xFF257180),
                       foregroundColor: Colors.white,
                       padding: const EdgeInsets.symmetric(vertical: 12),
                     ),

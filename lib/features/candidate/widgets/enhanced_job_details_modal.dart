@@ -2,12 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../../core/theme/app_colors.dart';
 import 'package:share_plus/share_plus.dart';
+import '../../../shared/widgets/tts_button.dart';
+import '../../../core/services/tts_service.dart'; // ✨ ADD THIS
 
 class EnhancedJobDetailsModal extends StatelessWidget {
   final Map<String, dynamic> job;
   final bool isSaved;
   final VoidCallback onSave;
   final VoidCallback onApply;
+  final String ttsText; // ✨ ADD THIS LINE - Field declaration
 
   const EnhancedJobDetailsModal({
     super.key,
@@ -15,6 +18,7 @@ class EnhancedJobDetailsModal extends StatelessWidget {
     required this.isSaved,
     required this.onSave,
     required this.onApply,
+    required this.ttsText, // ✨ ADD THIS LINE - Constructor parameter
   });
 
   @override
@@ -66,11 +70,25 @@ class EnhancedJobDetailsModal extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppColors.secondaryTeal,
+        gradient: LinearGradient(
+          colors: [
+            AppColors.secondaryTeal,
+            AppColors.secondaryTeal.withOpacity(0.8),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.secondaryTeal.withOpacity(0.3),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -100,9 +118,25 @@ class EnhancedJobDetailsModal extends StatelessWidget {
                   ],
                 ),
               ),
+
+              // ✨ TTS BUTTON - ADD THIS
+              IconButton(
+                onPressed: () {
+                  // Play TTS
+                  final ttsService = TTSService();
+                  ttsService.speak(_buildTTSText());
+                },
+                icon: const Icon(Icons.volume_up, color: Colors.white),
+                iconSize: 28,
+                tooltip: 'Read job details aloud',
+              ),
+
+              const SizedBox(width: 8),
+
               IconButton(
                 onPressed: () => Navigator.pop(context),
                 icon: const Icon(Icons.close, color: Colors.white),
+                iconSize: 28,
               ),
             ],
           ),
@@ -494,5 +528,48 @@ class EnhancedJobDetailsModal extends StatelessWidget {
         behavior: SnackBarBehavior.floating,
       ),
     );
+  }
+
+  // Build TTS text for this modal
+  String _buildTTSText() {
+    String text = "Job details. ";
+    text += "Position: ${job['job_title'] ?? job['title']}. ";
+    text += "Company: ${job['company_name'] ?? job['company']}. ";
+
+    if (job['location'] != null) {
+      text += "Location: ${job['location']}. ";
+    }
+
+    if (job['employment_type'] != null) {
+      text += "Employment type: ${job['employment_type']}. ";
+    }
+
+    if (job['salary_range'] != null) {
+      text += "Salary range: ${job['salary_range']}. ";
+    }
+
+    final description = job['description'] ?? job['job_description'];
+    if (description != null && description.toString().isNotEmpty) {
+      text += "Job description: $description. ";
+    }
+
+    final requirements = job['requirements'] ?? job['job_requirements'];
+    if (requirements != null && requirements.toString().isNotEmpty) {
+      text += "Requirements: $requirements. ";
+    }
+
+    final accommodations =
+        job['accommodations'] ?? job['pwd_accommodations'] ?? [];
+    if (accommodations is List && accommodations.isNotEmpty) {
+      text += "Accessibility accommodations: ";
+      final accNames = accommodations.map((acc) {
+        return acc is String
+            ? acc
+            : (acc['name']?.toString() ?? acc.toString());
+      }).join(', ');
+      text += "$accNames. ";
+    }
+
+    return text;
   }
 }

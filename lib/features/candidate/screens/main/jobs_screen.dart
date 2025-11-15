@@ -357,80 +357,77 @@ class _CandidateJobListingsScreenState extends State<CandidateJobListingsScreen>
   // ✨ ENHANCED VERSION OF YOUR WORKING _buildHeader METHOD
   Widget _buildHeader() {
     return SliverAppBar(
-      expandedHeight: 160,
+      expandedHeight: 180,
       floating: false,
       pinned: true,
       backgroundColor: primaryColor,
-      // ADD THIS ACTIONS SECTION
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.white),
+        onPressed: () => Navigator.pop(context),
+      ),
       actions: [
-        // TTS Button - reads job search summary
-        TTSButton(
-          text: _buildJobsSummaryForTTS(),
-          tooltip: 'Read job search results',
-          color: Colors.white,
+        Padding(
+          padding: const EdgeInsets.only(right: 12),
+          child: TTSButton(
+            text: _buildJobsSummaryForTTS(),
+            tooltip: 'Read jobs aloud',
+            icon: Icons.volume_up,
+            color: Colors.white,
+          ),
         ),
-        const SizedBox(width: 8),
       ],
       flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [primaryColor, sidebarColor],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
+        titlePadding: const EdgeInsets.only(left: 56, bottom: 16, right: 56),
+        title: const Text(
+          'Find Your Next Job',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
           ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 20, 20, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Find Your Next Job',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  // Search bar
-                  TextField(
-                    controller: _searchController,
-                    onChanged: (_) => _performSearch(),
-                    style: const TextStyle(color: Colors.black87),
-                    decoration: InputDecoration(
-                      hintText: 'Search jobs, skills, companies...',
-                      hintStyle: TextStyle(color: Colors.grey[600]),
-                      prefixIcon: Icon(Icons.search, color: primaryColor),
-                      // ADD THIS SUFFIX ICON - Voice Search Button
-                      suffixIcon: VoiceSearchButton(
-                        onResult: (text) {
-                          _searchController.text = text;
-                          _performSearch();
-                          _showVoiceSearchFeedback('Searching for "$text"');
-                        },
-                        idleColor: primaryColor,
-                        listeningColor: accentColor,
-                        size: 40,
-                      ),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                        borderSide: BorderSide.none,
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
-                  ),
-                ],
+        ),
+        background: Stack(
+          children: [
+            // Gradient background
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    primaryColor,
+                    primaryColor.withOpacity(0.8),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
               ),
             ),
-          ),
+
+            // Decorative circles (like Applications screen)
+            Positioned(
+              right: -40,
+              top: -40,
+              child: Container(
+                width: 140,
+                height: 140,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.1),
+                ),
+              ),
+            ),
+            Positioned(
+              left: -20,
+              bottom: -20,
+              child: Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white.withOpacity(0.1),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -537,93 +534,202 @@ class _CandidateJobListingsScreenState extends State<CandidateJobListingsScreen>
     }).join(' ');
   }
 
-  // KEEPING YOUR EXACT WORKING _buildStatsSection METHOD
+  // ✨ PHASE 1: ENHANCED Statistics Section - Matches Applications Screen Style
   Widget _buildStatsSection() {
     if (_isLoadingStats) return _buildLoadingStats();
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+      child: GridView.count(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisCount: 3,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
+        childAspectRatio: 0.85, // Slightly taller cards
         children: [
-          _buildStatItem(
-            'Total Jobs',
-            _statsData['total']?.toString() ?? '0',
-            Icons.work,
-            primaryColor,
+          _buildEnhancedStatCard(
+            title: 'Total Jobs',
+            value: _statsData['total']?.toString() ?? '0',
+            icon: Icons.work,
+            color: primaryColor, // Your teal #257180
+            gradientColors: [
+              primaryColor.withOpacity(0.08),
+              Colors.white,
+            ],
           ),
-          _buildStatItem(
-            'PWD Friendly',
-            (_statsData['total'] ?? 0).toString(),
-            Icons.accessible,
-            Colors.green,
+          _buildEnhancedStatCard(
+            title: 'PWD Friendly',
+            value: (_statsData['pwd_friendly'] ?? _statsData['total'] ?? 0)
+                .toString(),
+            icon: Icons.accessible,
+            color: const Color(0xFF4CAF50), // AppColors.pwdGreen
+            gradientColors: [
+              const Color(0xFF4CAF50).withOpacity(0.08),
+              Colors.white,
+            ],
           ),
-          _buildStatItem(
-            'Remote Jobs',
-            _statsData['remote']?.toString() ?? '0',
-            Icons.home,
-            Colors.blue,
+          _buildEnhancedStatCard(
+            title: 'Remote Jobs',
+            value: _statsData['remote']?.toString() ?? '0',
+            icon: Icons.home,
+            color: const Color(0xFF2196F3), // AppColors.pwdBlue
+            gradientColors: [
+              const Color(0xFF2196F3).withOpacity(0.08),
+              Colors.white,
+            ],
           ),
         ],
       ),
     );
   }
 
-  // KEEPING YOUR EXACT WORKING _buildLoadingStats METHOD
+  // ✨ PHASE 1: Enhanced Loading Stats - Matches new grid layout
   Widget _buildLoadingStats() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      height: 80,
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        borderRadius: BorderRadius.circular(12),
+      child: GridView.builder(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+          childAspectRatio: 0.85,
+        ),
+        itemCount: 3,
+        itemBuilder: (context, index) {
+          final colors = [
+            primaryColor,
+            const Color(0xFF4CAF50),
+            const Color(0xFF2196F3),
+          ];
+
+          return Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Colors.grey[100]!,
+                  Colors.grey[50]!,
+                ],
+              ),
+              borderRadius: BorderRadius.circular(12),
+              border: Border(
+                left: BorderSide(
+                  color: colors[index].withOpacity(0.3),
+                  width: 4,
+                ),
+              ),
+            ),
+            child: Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  colors[index],
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 
-  // KEEPING YOUR EXACT WORKING _buildStatItem METHOD
-  Widget _buildStatItem(
-      String label, String value, IconData icon, Color color) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withOpacity(0.1),
-            shape: BoxShape.circle,
-          ),
-          child: Icon(icon, color: color, size: 20),
+  // ✨ PHASE 1: Enhanced Stat Card - Gradient style matching Applications screen
+  Widget _buildEnhancedStatCard({
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+    required List<Color> gradientColors,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: gradientColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        const SizedBox(height: 8),
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-            color: Colors.black87,
-          ),
-        ),
-        Text(
-          label,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
+        borderRadius: BorderRadius.circular(12),
+        border: Border(
+          left: BorderSide(
+            color: color,
+            width: 4,
           ),
         ),
-      ],
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(0.15),
+            blurRadius: 8,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Icon with colored background
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(
+              icon,
+              color: color,
+              size: 24,
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // Value (large number)
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 32, // Larger for emphasis
+              fontWeight: FontWeight.w800, // Bolder
+              color: Colors.grey[900],
+              height: 1,
+              letterSpacing: -0.5, // Tighter for large numbers
+            ),
+          ),
+
+          const SizedBox(height: 4),
+
+          // Title (label)
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600, // Slightly bolder
+              color: Colors.grey[600],
+              height: 1.3,
+              letterSpacing: 0.2,
+            ),
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
     );
+  }
+
+  // ✨ PHASE 2: Extract company initials for logo
+  String _getCompanyInitials(String companyName) {
+    if (companyName.isEmpty) return 'CO';
+
+    final words = companyName.trim().split(' ');
+    if (words.length >= 2) {
+      return '${words[0][0]}${words[1][0]}'.toUpperCase();
+    } else {
+      return companyName
+          .substring(0, companyName.length >= 2 ? 2 : 1)
+          .toUpperCase();
+    }
   }
 
   // KEEPING YOUR EXACT WORKING _buildJobsList METHOD
@@ -729,216 +835,357 @@ class _CandidateJobListingsScreenState extends State<CandidateJobListingsScreen>
     );
   }
 
-  // ✨ ENHANCED JOB CARD (like your web version with PWD badges)
+  // ✨ PHASE 2: ENHANCED JOB CARD - Matches web design
   Widget _buildJobCard(Map<String, dynamic> job) {
     final isSaved = _savedJobs.contains(job['job_id']);
-    final accommodations = job['accommodations'] as List<dynamic>? ?? [];
+    final accommodations = job['pwd_accommodations'] as List<dynamic>? ?? [];
+    final companyName = job['company_name']?.toString() ?? 'Company';
+    final jobTitle = job['job_title']?.toString() ?? 'Job Title';
+    final location = job['location']?.toString() ?? 'Not specified';
+    final employmentType = job['employment_type']?.toString() ?? 'Full-time';
+    final salaryRange = job['salary_range']?.toString();
 
-    return GestureDetector(
-      onTap: () => _showJobDetailsModal(job), // ✨ NEW: Tap to see details
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border(
-            left:
-                BorderSide(color: primaryColor, width: 4), // ✨ NEW: Left border
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16, left: 16, right: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: primaryColor.withOpacity(0.15),
+            blurRadius: 8,
+            offset: const Offset(0, 4),
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header row
-            Row(
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => _showJobDetailsModal(job),
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // ✨ NEW: Company logo placeholder
-                Container(
-                  width: 48,
-                  height: 48,
-                  decoration: BoxDecoration(
-                    color: primaryColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(
-                    Icons.business,
-                    color: primaryColor,
-                    size: 24,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        job['job_title'] ?? 'Unknown Position',
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.black87,
+                // HEADER: Company Logo + Job Title + TTS Button
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Circular Company Logo with Gradient
+                    Container(
+                      width: 56,
+                      height: 56,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            accentColor,
+                            accentColor.withOpacity(0.7),
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        boxShadow: [
+                          BoxShadow(
+                            color: accentColor.withOpacity(0.3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          _getCompanyInitials(companyName),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
                         ),
                       ),
-                      const SizedBox(height: 4),
+                    ),
+
+                    const SizedBox(width: 12),
+
+                    // Job Title & Company Name
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            jobTitle,
+                            style: const TextStyle(
+                              fontSize: 18,
+                              fontWeight:
+                                  FontWeight.w700, // Increased from w600
+                              color: Colors.black87,
+                              height: 1.3, // Better line height
+                              letterSpacing:
+                                  -0.3, // Tighter letter spacing for headlines
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            companyName,
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                              color: Colors.grey[600], // Slightly lighter
+                              letterSpacing: 0.2, // Better readability
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+
+                    // ✨ PHASE 3: TTS Button for individual job card
+                    TTSButton(
+                      text: _buildJobCardTTS(job),
+                      tooltip: 'Read this job aloud',
+                      icon: Icons.volume_up,
+                      color: primaryColor,
+                      size: 32, // Smaller button for card
+                    ),
+                  ],
+                ),
+
+                const SizedBox(height: 12),
+
+                // META INFO: Location, Type, Salary
+                Wrap(
+                  spacing: 12,
+                  runSpacing: 8,
+                  children: [
+                    // Location
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.location_on,
+                            size: 16, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          location,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.grey[600],
+                            height: 1.4,
+                            letterSpacing: 0.1,
+                          ),
+                        ),
+                      ],
+                    ),
+
+                    // Employment Type
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.work, size: 16, color: Colors.grey[600]),
+                        const SizedBox(width: 4),
+                        Text(
+                          employmentType,
+                          style:
+                              TextStyle(fontSize: 13, color: Colors.grey[600]),
+                        ),
+                      ],
+                    ),
+
+                    // Salary (if available)
+                    if (salaryRange != null && salaryRange.isNotEmpty)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.attach_money,
+                              size: 16, color: Colors.green),
+                          const SizedBox(width: 4),
+                          Text(
+                            salaryRange,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: Colors.green,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                  ],
+                ),
+
+                // DIVIDER
+                if (accommodations.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+                  Divider(height: 1, color: Colors.grey[300]),
+                ],
+
+                // PWD ACCOMMODATIONS SECTION (DATA-DRIVEN - Option B)
+                if (accommodations.isNotEmpty) ...[
+                  const SizedBox(height: 12),
+
+                  // Section Header
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.accessible,
+                        size: 16,
+                        color: accentColor,
+                      ),
+                      const SizedBox(width: 6),
                       Text(
-                        job['company_name'] ?? 'Unknown Company',
+                        'PWD Accommodations',
                         style: TextStyle(
-                          fontSize: 14,
-                          color: Colors.grey[600],
+                          fontSize: 14, // Slightly larger
+                          fontWeight: FontWeight.w700,
+                          color: Colors.grey[800],
+                          letterSpacing: 0.3,
                         ),
                       ),
                     ],
                   ),
-                ),
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: TTSButton(
-                    text: _buildJobCardTTS(job),
-                    tooltip: 'Read job details',
-                    isIconOnly: false,
-                    size: 32,
-                  ),
-                ),
-                // ✨ NEW: Save button
-                // IconButton(
-                //   onPressed: () => _toggleJobSave(job),
-                //   icon: Icon(
-                //     isSaved ? Icons.bookmark : Icons.bookmark_border,
-                //     color: isSaved ? accentColor : Colors.grey,
-                //   ),
-                // ),
-              ],
-            ),
-            const SizedBox(height: 12),
 
-            // Inside your job card widget, add this button
+                  const SizedBox(height: 8),
 
-            // Job details row
-            Row(
-              children: [
-                Icon(Icons.location_on, size: 16, color: Colors.grey[600]),
-                const SizedBox(width: 4),
-                Text(
-                  job['location'] ?? 'Not specified',
-                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                ),
-                const SizedBox(width: 16),
-                Icon(Icons.work, size: 16, color: Colors.grey[600]),
-                const SizedBox(width: 4),
-                Text(
-                  job['employment_type'] ?? 'Not specified',
-                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                ),
-              ],
-            ),
+                  // PWD Badges
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: accommodations.map((accommodation) {
+                      final accName = accommodation is String
+                          ? accommodation
+                          : (accommodation['name']?.toString() ??
+                              accommodation.toString());
 
-            // ✨ NEW: Salary if available
-            if (job['salary_range'] != null) ...[
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Icon(Icons.attach_money, size: 16, color: Colors.green),
-                  const SizedBox(width: 4),
-                  Text(
-                    job['salary_range'].toString(),
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: Colors.green,
-                      fontWeight: FontWeight.w500,
-                    ),
+                      return _buildPWDBadge(accName);
+                    }).toList(),
                   ),
                 ],
-              ),
-            ],
 
-            // ✨ NEW: PWD Accommodations (key web feature!)
-            if (accommodations.isNotEmpty) ...[
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: accommodations
-                    .take(3)
-                    .map((acc) =>
-                        _buildAccommodationChip(acc['name'] ?? acc.toString()))
-                    .toList(),
-              ),
-            ],
+                const SizedBox(height: 16),
 
-            const SizedBox(height: 12),
-
-            // Bottom row with date and actions
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  _formatDate(job['posted_at']),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.grey[500],
-                  ),
-                ),
+                // ACTION BUTTONS ROW
                 Row(
                   children: [
-                    // ✨ NEW: View Details button
-                    OutlinedButton(
-                      onPressed: () => _showJobDetailsModal(job),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: primaryColor,
-                        side: BorderSide(color: primaryColor),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
+                    // View Full Details Button (Teal Outline)
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _showJobDetailsModal(job),
+                        icon: const Icon(Icons.info_outline, size: 16),
+                        label: const Text(
+                          'View Details',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
+                          ),
                         ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: primaryColor,
+                          side: BorderSide(color: primaryColor, width: 2),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                       ),
-                      child:
-                          const Text('Details', style: TextStyle(fontSize: 12)),
                     ),
-                    const SizedBox(width: 8),
-                    // Apply button
-                    ElevatedButton(
-                      onPressed: _isPerformingAction
-                          ? null
-                          : () => _showApplyModal(job),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: accentColor,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
+
+                    const SizedBox(width: 12),
+
+                    // Apply Now Button (Orange Gradient)
+                    Expanded(
+                      child: Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              accentColor,
+                              accentColor.withOpacity(0.8),
+                            ],
+                          ),
                           borderRadius: BorderRadius.circular(8),
+                          boxShadow: [
+                            BoxShadow(
+                              color: accentColor.withOpacity(0.3),
+                              blurRadius: 4,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
+                        child: ElevatedButton(
+                          onPressed: _isPerformingAction
+                              ? null
+                              : () => _showApplyModal(job),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            foregroundColor: Colors.white,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          child: const Text(
+                            'Apply Now',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5, // More emphasis
+                            ),
+                          ),
                         ),
                       ),
-                      child:
-                          const Text('Apply', style: TextStyle(fontSize: 12)),
                     ),
                   ],
                 ),
               ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 
-  /// Generate single job description for TTS
+  // ✨ PHASE 2: PWD Accommodation Badge Widget
+  Widget _buildPWDBadge(String accommodationName) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: accentColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: accentColor.withOpacity(0.4),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.check_circle,
+            size: 14,
+            color: accentColor,
+          ),
+          const SizedBox(width: 4),
+          Text(
+            accommodationName,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              color: accentColor,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Build TTS text for individual job card (for card TTS button)
   String _buildJobCardTTS(Map<String, dynamic> job) {
-    String text = "${job['job_title']} at ${job['company_name']}. ";
+    String text = "Job opening. ";
+    text += "${job['job_title']} at ${job['company_name']}. ";
 
     if (job['location'] != null) {
       text += "Location: ${job['location']}. ";
@@ -948,41 +1195,41 @@ class _CandidateJobListingsScreenState extends State<CandidateJobListingsScreen>
       text += "Employment type: ${job['employment_type']}. ";
     }
 
-    if (job['salary_range'] != null) {
+    if (job['salary_range'] != null &&
+        job['salary_range'].toString().isNotEmpty) {
       text += "Salary: ${job['salary_range']}. ";
     }
 
-    if (job['job_description'] != null &&
-        job['job_description'].toString().isNotEmpty) {
-      text += "Description: ${job['job_description']}. ";
+    // Add PWD accommodations if available
+    final accommodations = job['pwd_accommodations'] as List<dynamic>? ?? [];
+    if (accommodations.isNotEmpty) {
+      text += "This job offers the following accommodations: ";
+      final accNames = accommodations.map((acc) {
+        return acc is String
+            ? acc
+            : (acc['name']?.toString() ?? acc.toString());
+      }).join(', ');
+      text += "$accNames. ";
     }
 
-    final accommodations = job['pwd_accommodations'] as List?;
-    if (accommodations != null && accommodations.isNotEmpty) {
-      text +=
-          "This job offers the following accommodations: ${accommodations.join(', ')}. ";
-    }
+    text +=
+        "Tap the View Details button to learn more, or Apply Now to submit your application.";
 
     return text;
   }
 
-  /// Generate job search results summary for TTS
-  /// Generate job search results summary for TTS
   String _buildJobsSummaryForTTS() {
     if (_isLoadingJobs) {
-      return "Loading job listings...";
+      return "Loading job listings, please wait.";
     }
 
     final totalJobs = _allJobs.length;
 
-    String summary = "Job search results. ";
-
     if (totalJobs == 0) {
-      summary +=
-          "No jobs found matching your search criteria. Try adjusting your filters or search terms.";
-      return summary;
+      return "No jobs found matching your search criteria. Try adjusting your filters or search terms.";
     }
 
+    String summary = "Job search results. ";
     summary += "Found $totalJobs job";
     if (totalJobs != 1) summary += "s";
     summary += ". ";
@@ -992,8 +1239,8 @@ class _CandidateJobListingsScreenState extends State<CandidateJobListingsScreen>
     int remoteCount = 0;
 
     for (var job in _allJobs) {
-      final accommodations = job['pwd_accommodations'] as List?;
-      if (accommodations != null && accommodations.isNotEmpty) {
+      final accommodations = job['pwd_accommodations'] as List<dynamic>? ?? [];
+      if (accommodations.isNotEmpty) {
         pwdFriendlyCount++;
       }
 
@@ -1032,31 +1279,54 @@ class _CandidateJobListingsScreenState extends State<CandidateJobListingsScreen>
     return summary;
   }
 
-  // ✨ NEW: PWD Accommodation chips (key web feature!)
-  Widget _buildAccommodationChip(String accommodation) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-        color: Colors.green.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.green.withOpacity(0.3)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(Icons.accessible, size: 12, color: Colors.green[700]),
-          const SizedBox(width: 4),
-          Text(
-            accommodation,
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.green[700],
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ],
-      ),
-    );
+  // Build TTS text for job details modal (for modal TTS button)
+  String _buildJobDetailsTextForTTS(Map<String, dynamic> job) {
+    String text = "Job details. ";
+    text += "Position: ${job['job_title']}. ";
+    text += "Company: ${job['company_name']}. ";
+
+    if (job['location'] != null) {
+      text += "Location: ${job['location']}. ";
+    }
+
+    if (job['employment_type'] != null) {
+      text += "Employment type: ${job['employment_type']}. ";
+    }
+
+    if (job['salary_range'] != null &&
+        job['salary_range'].toString().isNotEmpty) {
+      text += "Salary range: ${job['salary_range']}. ";
+    }
+
+    if (job['job_description'] != null &&
+        job['job_description'].toString().isNotEmpty) {
+      text += "Job description: ${job['job_description']}. ";
+    }
+
+    if (job['job_requirements'] != null &&
+        job['job_requirements'].toString().isNotEmpty) {
+      text += "Requirements: ${job['job_requirements']}. ";
+    }
+
+    // Add PWD accommodations
+    final accommodations = job['pwd_accommodations'] as List<dynamic>? ?? [];
+    if (accommodations.isNotEmpty) {
+      text += "Accessibility accommodations: ";
+      final accNames = accommodations.map((acc) {
+        return acc is String
+            ? acc
+            : (acc['name']?.toString() ?? acc.toString());
+      }).join(', ');
+      text += "$accNames. ";
+    }
+
+    if (job['application_deadline'] != null) {
+      text += "Application deadline: ${job['application_deadline']}. ";
+    }
+
+    text += "Use the apply button to submit your application.";
+
+    return text;
   }
 
   String _formatDate(dynamic date) {
@@ -1574,406 +1844,3 @@ class EnhancedJobDetailsModal extends StatelessWidget {
     );
   }
 }
-
-// // ✨ NEW: Enhanced Application Modal (matches your web application screenshots)
-// class EnhancedApplicationModal extends StatefulWidget {
-//   final Map<String, dynamic> job;
-
-//   const EnhancedApplicationModal({super.key, required this.job});
-
-//   @override
-//   State<EnhancedApplicationModal> createState() =>
-//       _EnhancedApplicationModalState();
-// }
-
-// class _EnhancedApplicationModalState extends State<EnhancedApplicationModal> {
-//   final _coverLetterController = TextEditingController();
-//   final _accessibilityNeedsController = TextEditingController();
-
-//   bool _isSubmitting = false;
-//   bool _includeCoverLetter = false;
-//   bool _includePortfolioLink = false;
-//   bool _includeReferences = false;
-
-//   @override
-//   void dispose() {
-//     _coverLetterController.dispose();
-//     _accessibilityNeedsController.dispose();
-//     super.dispose();
-//   }
-
-//   Future<void> _submitApplication() async {
-//     setState(() {
-//       _isSubmitting = true;
-//     });
-
-//     try {
-//       final response = await ApiService.performJobAction(
-//         jobId: widget.job['job_id'],
-//         action: 'apply',
-//         coverLetter: _coverLetterController.text.trim(),
-//         accessibilityNeeds:
-//             _accessibilityNeedsController.text.trim(), // ✅ SIMPLE FIX
-//       );
-
-//       if (response['success']) {
-//         Navigator.pop(context);
-//         ScaffoldMessenger.of(context).showSnackBar(
-//           SnackBar(
-//             content: Text(
-//                 response['message'] ?? 'Application submitted successfully!'),
-//             backgroundColor: Colors.green,
-//             behavior: SnackBarBehavior.floating,
-//           ),
-//         );
-//       } else {
-//         throw Exception(response['message'] ?? 'Failed to submit application');
-//       }
-//     } catch (e) {
-//       ScaffoldMessenger.of(context).showSnackBar(
-//         SnackBar(
-//           content: Text('Failed to submit application: $e'),
-//           backgroundColor: Colors.red,
-//           behavior: SnackBarBehavior.floating,
-//         ),
-//       );
-//     } finally {
-//       setState(() {
-//         _isSubmitting = false;
-//       });
-//     }
-//   }
-
-//   @override
-//   Widget build(BuildContext context) {
-//     return Container(
-//       height: MediaQuery.of(context).size.height * 0.9,
-//       decoration: const BoxDecoration(
-//         color: Colors.white,
-//         borderRadius: BorderRadius.only(
-//           topLeft: Radius.circular(20),
-//           topRight: Radius.circular(20),
-//         ),
-//       ),
-//       child: Column(
-//         children: [
-//           // Header (like your web application modal)
-//           Container(
-//             padding: const EdgeInsets.all(20),
-//             decoration: const BoxDecoration(
-//               color: Color(0xFF257180),
-//               borderRadius: BorderRadius.only(
-//                 topLeft: Radius.circular(20),
-//                 topRight: Radius.circular(20),
-//               ),
-//             ),
-//             child: Row(
-//               children: [
-//                 const Icon(Icons.work, color: Colors.white, size: 24),
-//                 const SizedBox(width: 12),
-//                 Expanded(
-//                   child: Column(
-//                     crossAxisAlignment: CrossAxisAlignment.start,
-//                     children: [
-//                       const Text(
-//                         'Apply for Job',
-//                         style: TextStyle(
-//                           color: Colors.white,
-//                           fontSize: 18,
-//                           fontWeight: FontWeight.bold,
-//                         ),
-//                       ),
-//                       Text(
-//                         widget.job['job_title'] ?? 'Unknown Position',
-//                         style: const TextStyle(
-//                           color: Colors.white70,
-//                           fontSize: 14,
-//                         ),
-//                       ),
-//                       Text(
-//                         widget.job['company_name'] ?? 'Unknown Company',
-//                         style: const TextStyle(
-//                           color: Colors.white70,
-//                           fontSize: 12,
-//                         ),
-//                       ),
-//                     ],
-//                   ),
-//                 ),
-//                 IconButton(
-//                   onPressed: () => Navigator.pop(context),
-//                   icon: const Icon(Icons.close, color: Colors.white),
-//                 ),
-//               ],
-//             ),
-//           ),
-
-//           // Content (matches your web application form)
-//           Expanded(
-//             child: SingleChildScrollView(
-//               padding: const EdgeInsets.all(20),
-//               child: Column(
-//                 crossAxisAlignment: CrossAxisAlignment.start,
-//                 children: [
-//                   // Resume section (like your web screenshots)
-//                   Container(
-//                     padding: const EdgeInsets.all(16),
-//                     decoration: BoxDecoration(
-//                       color: const Color(0xFF257180).withOpacity(0.1),
-//                       borderRadius: BorderRadius.circular(12),
-//                       border: Border.all(
-//                         color: const Color(0xFFFD8B51).withOpacity(0.3),
-//                       ),
-//                     ),
-//                     child: Row(
-//                       children: [
-//                         const Icon(
-//                           Icons.description,
-//                           color: Color(0xFFFD8B51),
-//                           size: 24,
-//                         ),
-//                         const SizedBox(width: 12),
-//                         Expanded(
-//                           child: Column(
-//                             crossAxisAlignment: CrossAxisAlignment.start,
-//                             children: [
-//                               const Text(
-//                                 'Resume',
-//                                 style: TextStyle(
-//                                   fontSize: 16,
-//                                   fontWeight: FontWeight.w600,
-//                                 ),
-//                               ),
-//                               const SizedBox(height: 4),
-//                               Text(
-//                                 '50% match to job requirements',
-//                                 style: TextStyle(
-//                                   fontSize: 12,
-//                                   color: Colors.orange[700],
-//                                 ),
-//                               ),
-//                               // Progress bar
-//                               Container(
-//                                 margin: const EdgeInsets.only(top: 8),
-//                                 height: 4,
-//                                 decoration: BoxDecoration(
-//                                   color: Colors.grey[200],
-//                                   borderRadius: BorderRadius.circular(2),
-//                                 ),
-//                                 child: FractionallySizedBox(
-//                                   widthFactor: 0.5,
-//                                   child: Container(
-//                                     decoration: BoxDecoration(
-//                                       color: const Color(0xFFFD8B51),
-//                                       borderRadius: BorderRadius.circular(2),
-//                                     ),
-//                                   ),
-//                                 ),
-//                               ),
-//                             ],
-//                           ),
-//                         ),
-//                         // TextButton(
-//                         //   onPressed: () {
-//                         //     // TODO: View resume functionality
-//                         //   },
-//                         //   child: const Text('View'),
-//                         // ),
-//                       ],
-//                     ),
-//                   ),
-
-//                   const SizedBox(height: 24),
-
-//                   // Personalization Tips (like your web)
-//                   const Text(
-//                     'Personalization Tips:',
-//                     style: TextStyle(
-//                       fontSize: 16,
-//                       fontWeight: FontWeight.w600,
-//                       color: Colors.black87,
-//                     ),
-//                   ),
-//                   const SizedBox(height: 12),
-//                   ...[
-//                     'Tailor your experience to match the specific job requirements',
-//                     'Highlight achievements that demonstrate your capabilities',
-//                     'Mention any relevant certifications or training',
-//                     'Emphasize how your unique perspective as a PWD can benefit the role',
-//                   ]
-//                       .map((tip) => Padding(
-//                             padding: const EdgeInsets.symmetric(vertical: 4),
-//                             child: Row(
-//                               crossAxisAlignment: CrossAxisAlignment.start,
-//                               children: [
-//                                 const Icon(
-//                                   Icons.lightbulb,
-//                                   size: 16,
-//                                   color: Color(0xFFFD8B51),
-//                                 ),
-//                                 const SizedBox(width: 8),
-//                                 Expanded(
-//                                   child: Text(
-//                                     tip,
-//                                     style: const TextStyle(
-//                                       fontSize: 13,
-//                                       color: Colors.black54,
-//                                     ),
-//                                   ),
-//                                 ),
-//                               ],
-//                             ),
-//                           ))
-//                       .toList(),
-
-//                   const SizedBox(height: 24),
-
-//                   // Additional Materials (like your web)
-//                   const Text(
-//                     'Additional Materials',
-//                     style: TextStyle(
-//                       fontSize: 16,
-//                       fontWeight: FontWeight.w600,
-//                       color: Colors.black87,
-//                     ),
-//                   ),
-//                   const SizedBox(height: 12),
-
-//                   CheckboxListTile(
-//                     value: _includeCoverLetter,
-//                     onChanged: (value) {
-//                       setState(() {
-//                         _includeCoverLetter = value ?? false;
-//                       });
-//                     },
-//                     title: const Text('Include cover letter'),
-//                     contentPadding: EdgeInsets.zero,
-//                     activeColor: const Color(0xFFFD8B51),
-//                   ),
-
-//                   CheckboxListTile(
-//                     value: _includePortfolioLink,
-//                     onChanged: (value) {
-//                       setState(() {
-//                         _includePortfolioLink = value ?? false;
-//                       });
-//                     },
-//                     title: const Text('Include portfolio link'),
-//                     contentPadding: EdgeInsets.zero,
-//                     activeColor: const Color(0xFFFD8B51),
-//                   ),
-
-//                   CheckboxListTile(
-//                     value: _includeReferences,
-//                     onChanged: (value) {
-//                       setState(() {
-//                         _includeReferences = value ?? false;
-//                       });
-//                     },
-//                     title: const Text('Include references'),
-//                     contentPadding: EdgeInsets.zero,
-//                     activeColor: const Color(0xFFFD8B51),
-//                   ),
-
-//                   const SizedBox(height: 24),
-
-//                   // Cover Letter (like your web form)
-//                   const Text(
-//                     'Cover Letter (Optional)',
-//                     style: TextStyle(
-//                       fontSize: 16,
-//                       fontWeight: FontWeight.w600,
-//                       color: Colors.black87,
-//                     ),
-//                   ),
-//                   const SizedBox(height: 8),
-//                   TextField(
-//                     controller: _coverLetterController,
-//                     decoration: const InputDecoration(
-//                       hintText: 'Write a brief message to the employer...',
-//                       border: OutlineInputBorder(),
-//                       contentPadding: EdgeInsets.all(12),
-//                     ),
-//                     maxLines: 4,
-//                   ),
-
-//                   const SizedBox(height: 24),
-
-//                   // Accessibility Needs (key PWD feature from your web!)
-//                   // const Text(
-//                   //   'Accessibility Needs',
-//                   //   style: TextStyle(
-//                   //     fontSize: 16,
-//                   //     fontWeight: FontWeight.w600,
-//                   //     color: Colors.black87,
-//                   //   ),
-//                   // ),
-//                   // const SizedBox(height: 8),
-//                   // TextField(
-//                   //   controller: _accessibilityNeedsController,
-//                   //   decoration: const InputDecoration(
-//                   //     hintText:
-//                   //         'Please share any accessibility accommodations you may need during the interview process...',
-//                   //     border: OutlineInputBorder(),
-//                   //     contentPadding: EdgeInsets.all(12),
-//                   //   ),
-//                   //   maxLines: 3,
-//                   // ),
-//                 ],
-//               ),
-//             ),
-//           ),
-
-//           // Action buttons (like your web modal)
-//           Container(
-//             padding: const EdgeInsets.all(20),
-//             decoration: BoxDecoration(
-//               color: Colors.white,
-//               boxShadow: [
-//                 BoxShadow(
-//                   color: Colors.black.withOpacity(0.05),
-//                   blurRadius: 8,
-//                   offset: const Offset(0, -2),
-//                 ),
-//               ],
-//             ),
-//             child: Row(
-//               children: [
-//                 Expanded(
-//                   child: OutlinedButton(
-//                     onPressed:
-//                         _isSubmitting ? null : () => Navigator.pop(context),
-//                     child: const Text('Cancel'),
-//                   ),
-//                 ),
-//                 const SizedBox(width: 12),
-//                 Expanded(
-//                   flex: 2,
-//                   child: ElevatedButton(
-//                     onPressed: _isSubmitting ? null : _submitApplication,
-//                     style: ElevatedButton.styleFrom(
-//                       backgroundColor: const Color(0xFF257180),
-//                       foregroundColor: Colors.white,
-//                       padding: const EdgeInsets.symmetric(vertical: 12),
-//                     ),
-//                     child: _isSubmitting
-//                         ? const SizedBox(
-//                             width: 20,
-//                             height: 20,
-//                             child: CircularProgressIndicator(
-//                               strokeWidth: 2,
-//                               valueColor:
-//                                   AlwaysStoppedAnimation<Color>(Colors.white),
-//                             ),
-//                           )
-//                         : const Text('Submit Application'),
-//                   ),
-//                 ),
-//               ],
-//             ),
-//           ),
-//         ],
-//       ),
-//     );
-//   }
-// }

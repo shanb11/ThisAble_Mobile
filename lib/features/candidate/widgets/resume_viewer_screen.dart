@@ -33,7 +33,7 @@ class _ResumeViewerScreenState extends State<ResumeViewerScreen> {
   Future<void> _openResume() async {
     try {
       // Get base URL from config
-      final baseUrl = await DynamicApiConfig.getBaseUrl();
+      final baseUrl = await DynamicApiConfig.getFileBaseUrl();
 
       // Build full URL
       _fullUrl = '$baseUrl/${widget.resumePath}';

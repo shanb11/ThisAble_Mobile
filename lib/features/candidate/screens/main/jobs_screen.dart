@@ -1575,405 +1575,405 @@ class EnhancedJobDetailsModal extends StatelessWidget {
   }
 }
 
-// ✨ NEW: Enhanced Application Modal (matches your web application screenshots)
-class EnhancedApplicationModal extends StatefulWidget {
-  final Map<String, dynamic> job;
+// // ✨ NEW: Enhanced Application Modal (matches your web application screenshots)
+// class EnhancedApplicationModal extends StatefulWidget {
+//   final Map<String, dynamic> job;
 
-  const EnhancedApplicationModal({super.key, required this.job});
+//   const EnhancedApplicationModal({super.key, required this.job});
 
-  @override
-  State<EnhancedApplicationModal> createState() =>
-      _EnhancedApplicationModalState();
-}
+//   @override
+//   State<EnhancedApplicationModal> createState() =>
+//       _EnhancedApplicationModalState();
+// }
 
-class _EnhancedApplicationModalState extends State<EnhancedApplicationModal> {
-  final _coverLetterController = TextEditingController();
-  final _accessibilityNeedsController = TextEditingController();
+// class _EnhancedApplicationModalState extends State<EnhancedApplicationModal> {
+//   final _coverLetterController = TextEditingController();
+//   final _accessibilityNeedsController = TextEditingController();
 
-  bool _isSubmitting = false;
-  bool _includeCoverLetter = false;
-  bool _includePortfolioLink = false;
-  bool _includeReferences = false;
+//   bool _isSubmitting = false;
+//   bool _includeCoverLetter = false;
+//   bool _includePortfolioLink = false;
+//   bool _includeReferences = false;
 
-  @override
-  void dispose() {
-    _coverLetterController.dispose();
-    _accessibilityNeedsController.dispose();
-    super.dispose();
-  }
+//   @override
+//   void dispose() {
+//     _coverLetterController.dispose();
+//     _accessibilityNeedsController.dispose();
+//     super.dispose();
+//   }
 
-  Future<void> _submitApplication() async {
-    setState(() {
-      _isSubmitting = true;
-    });
+//   Future<void> _submitApplication() async {
+//     setState(() {
+//       _isSubmitting = true;
+//     });
 
-    try {
-      final response = await ApiService.performJobAction(
-        jobId: widget.job['job_id'],
-        action: 'apply',
-        coverLetter: _coverLetterController.text.trim(),
-        accessibilityNeeds:
-            _accessibilityNeedsController.text.trim(), // ✅ SIMPLE FIX
-      );
+//     try {
+//       final response = await ApiService.performJobAction(
+//         jobId: widget.job['job_id'],
+//         action: 'apply',
+//         coverLetter: _coverLetterController.text.trim(),
+//         accessibilityNeeds:
+//             _accessibilityNeedsController.text.trim(), // ✅ SIMPLE FIX
+//       );
 
-      if (response['success']) {
-        Navigator.pop(context);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                response['message'] ?? 'Application submitted successfully!'),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
-      } else {
-        throw Exception(response['message'] ?? 'Failed to submit application');
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to submit application: $e'),
-          backgroundColor: Colors.red,
-          behavior: SnackBarBehavior.floating,
-        ),
-      );
-    } finally {
-      setState(() {
-        _isSubmitting = false;
-      });
-    }
-  }
+//       if (response['success']) {
+//         Navigator.pop(context);
+//         ScaffoldMessenger.of(context).showSnackBar(
+//           SnackBar(
+//             content: Text(
+//                 response['message'] ?? 'Application submitted successfully!'),
+//             backgroundColor: Colors.green,
+//             behavior: SnackBarBehavior.floating,
+//           ),
+//         );
+//       } else {
+//         throw Exception(response['message'] ?? 'Failed to submit application');
+//       }
+//     } catch (e) {
+//       ScaffoldMessenger.of(context).showSnackBar(
+//         SnackBar(
+//           content: Text('Failed to submit application: $e'),
+//           backgroundColor: Colors.red,
+//           behavior: SnackBarBehavior.floating,
+//         ),
+//       );
+//     } finally {
+//       setState(() {
+//         _isSubmitting = false;
+//       });
+//     }
+//   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.9,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.only(
-          topLeft: Radius.circular(20),
-          topRight: Radius.circular(20),
-        ),
-      ),
-      child: Column(
-        children: [
-          // Header (like your web application modal)
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: const BoxDecoration(
-              color: Color(0xFF257180),
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(20),
-                topRight: Radius.circular(20),
-              ),
-            ),
-            child: Row(
-              children: [
-                const Icon(Icons.work, color: Colors.white, size: 24),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Apply for Job',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      Text(
-                        widget.job['job_title'] ?? 'Unknown Position',
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 14,
-                        ),
-                      ),
-                      Text(
-                        widget.job['company_name'] ?? 'Unknown Company',
-                        style: const TextStyle(
-                          color: Colors.white70,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, color: Colors.white),
-                ),
-              ],
-            ),
-          ),
+//   @override
+//   Widget build(BuildContext context) {
+//     return Container(
+//       height: MediaQuery.of(context).size.height * 0.9,
+//       decoration: const BoxDecoration(
+//         color: Colors.white,
+//         borderRadius: BorderRadius.only(
+//           topLeft: Radius.circular(20),
+//           topRight: Radius.circular(20),
+//         ),
+//       ),
+//       child: Column(
+//         children: [
+//           // Header (like your web application modal)
+//           Container(
+//             padding: const EdgeInsets.all(20),
+//             decoration: const BoxDecoration(
+//               color: Color(0xFF257180),
+//               borderRadius: BorderRadius.only(
+//                 topLeft: Radius.circular(20),
+//                 topRight: Radius.circular(20),
+//               ),
+//             ),
+//             child: Row(
+//               children: [
+//                 const Icon(Icons.work, color: Colors.white, size: 24),
+//                 const SizedBox(width: 12),
+//                 Expanded(
+//                   child: Column(
+//                     crossAxisAlignment: CrossAxisAlignment.start,
+//                     children: [
+//                       const Text(
+//                         'Apply for Job',
+//                         style: TextStyle(
+//                           color: Colors.white,
+//                           fontSize: 18,
+//                           fontWeight: FontWeight.bold,
+//                         ),
+//                       ),
+//                       Text(
+//                         widget.job['job_title'] ?? 'Unknown Position',
+//                         style: const TextStyle(
+//                           color: Colors.white70,
+//                           fontSize: 14,
+//                         ),
+//                       ),
+//                       Text(
+//                         widget.job['company_name'] ?? 'Unknown Company',
+//                         style: const TextStyle(
+//                           color: Colors.white70,
+//                           fontSize: 12,
+//                         ),
+//                       ),
+//                     ],
+//                   ),
+//                 ),
+//                 IconButton(
+//                   onPressed: () => Navigator.pop(context),
+//                   icon: const Icon(Icons.close, color: Colors.white),
+//                 ),
+//               ],
+//             ),
+//           ),
 
-          // Content (matches your web application form)
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Resume section (like your web screenshots)
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF257180).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFFFD8B51).withOpacity(0.3),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(
-                          Icons.description,
-                          color: Color(0xFFFD8B51),
-                          size: 24,
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Resume',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '50% match to job requirements',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.orange[700],
-                                ),
-                              ),
-                              // Progress bar
-                              Container(
-                                margin: const EdgeInsets.only(top: 8),
-                                height: 4,
-                                decoration: BoxDecoration(
-                                  color: Colors.grey[200],
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                                child: FractionallySizedBox(
-                                  widthFactor: 0.5,
-                                  child: Container(
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFFD8B51),
-                                      borderRadius: BorderRadius.circular(2),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        // TextButton(
-                        //   onPressed: () {
-                        //     // TODO: View resume functionality
-                        //   },
-                        //   child: const Text('View'),
-                        // ),
-                      ],
-                    ),
-                  ),
+//           // Content (matches your web application form)
+//           Expanded(
+//             child: SingleChildScrollView(
+//               padding: const EdgeInsets.all(20),
+//               child: Column(
+//                 crossAxisAlignment: CrossAxisAlignment.start,
+//                 children: [
+//                   // Resume section (like your web screenshots)
+//                   Container(
+//                     padding: const EdgeInsets.all(16),
+//                     decoration: BoxDecoration(
+//                       color: const Color(0xFF257180).withOpacity(0.1),
+//                       borderRadius: BorderRadius.circular(12),
+//                       border: Border.all(
+//                         color: const Color(0xFFFD8B51).withOpacity(0.3),
+//                       ),
+//                     ),
+//                     child: Row(
+//                       children: [
+//                         const Icon(
+//                           Icons.description,
+//                           color: Color(0xFFFD8B51),
+//                           size: 24,
+//                         ),
+//                         const SizedBox(width: 12),
+//                         Expanded(
+//                           child: Column(
+//                             crossAxisAlignment: CrossAxisAlignment.start,
+//                             children: [
+//                               const Text(
+//                                 'Resume',
+//                                 style: TextStyle(
+//                                   fontSize: 16,
+//                                   fontWeight: FontWeight.w600,
+//                                 ),
+//                               ),
+//                               const SizedBox(height: 4),
+//                               Text(
+//                                 '50% match to job requirements',
+//                                 style: TextStyle(
+//                                   fontSize: 12,
+//                                   color: Colors.orange[700],
+//                                 ),
+//                               ),
+//                               // Progress bar
+//                               Container(
+//                                 margin: const EdgeInsets.only(top: 8),
+//                                 height: 4,
+//                                 decoration: BoxDecoration(
+//                                   color: Colors.grey[200],
+//                                   borderRadius: BorderRadius.circular(2),
+//                                 ),
+//                                 child: FractionallySizedBox(
+//                                   widthFactor: 0.5,
+//                                   child: Container(
+//                                     decoration: BoxDecoration(
+//                                       color: const Color(0xFFFD8B51),
+//                                       borderRadius: BorderRadius.circular(2),
+//                                     ),
+//                                   ),
+//                                 ),
+//                               ),
+//                             ],
+//                           ),
+//                         ),
+//                         // TextButton(
+//                         //   onPressed: () {
+//                         //     // TODO: View resume functionality
+//                         //   },
+//                         //   child: const Text('View'),
+//                         // ),
+//                       ],
+//                     ),
+//                   ),
 
-                  const SizedBox(height: 24),
+//                   const SizedBox(height: 24),
 
-                  // Personalization Tips (like your web)
-                  const Text(
-                    'Personalization Tips:',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  ...[
-                    'Tailor your experience to match the specific job requirements',
-                    'Highlight achievements that demonstrate your capabilities',
-                    'Mention any relevant certifications or training',
-                    'Emphasize how your unique perspective as a PWD can benefit the role',
-                  ]
-                      .map((tip) => Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 4),
-                            child: Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const Icon(
-                                  Icons.lightbulb,
-                                  size: 16,
-                                  color: Color(0xFFFD8B51),
-                                ),
-                                const SizedBox(width: 8),
-                                Expanded(
-                                  child: Text(
-                                    tip,
-                                    style: const TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.black54,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ))
-                      .toList(),
+//                   // Personalization Tips (like your web)
+//                   const Text(
+//                     'Personalization Tips:',
+//                     style: TextStyle(
+//                       fontSize: 16,
+//                       fontWeight: FontWeight.w600,
+//                       color: Colors.black87,
+//                     ),
+//                   ),
+//                   const SizedBox(height: 12),
+//                   ...[
+//                     'Tailor your experience to match the specific job requirements',
+//                     'Highlight achievements that demonstrate your capabilities',
+//                     'Mention any relevant certifications or training',
+//                     'Emphasize how your unique perspective as a PWD can benefit the role',
+//                   ]
+//                       .map((tip) => Padding(
+//                             padding: const EdgeInsets.symmetric(vertical: 4),
+//                             child: Row(
+//                               crossAxisAlignment: CrossAxisAlignment.start,
+//                               children: [
+//                                 const Icon(
+//                                   Icons.lightbulb,
+//                                   size: 16,
+//                                   color: Color(0xFFFD8B51),
+//                                 ),
+//                                 const SizedBox(width: 8),
+//                                 Expanded(
+//                                   child: Text(
+//                                     tip,
+//                                     style: const TextStyle(
+//                                       fontSize: 13,
+//                                       color: Colors.black54,
+//                                     ),
+//                                   ),
+//                                 ),
+//                               ],
+//                             ),
+//                           ))
+//                       .toList(),
 
-                  const SizedBox(height: 24),
+//                   const SizedBox(height: 24),
 
-                  // Additional Materials (like your web)
-                  const Text(
-                    'Additional Materials',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
+//                   // Additional Materials (like your web)
+//                   const Text(
+//                     'Additional Materials',
+//                     style: TextStyle(
+//                       fontSize: 16,
+//                       fontWeight: FontWeight.w600,
+//                       color: Colors.black87,
+//                     ),
+//                   ),
+//                   const SizedBox(height: 12),
 
-                  CheckboxListTile(
-                    value: _includeCoverLetter,
-                    onChanged: (value) {
-                      setState(() {
-                        _includeCoverLetter = value ?? false;
-                      });
-                    },
-                    title: const Text('Include cover letter'),
-                    contentPadding: EdgeInsets.zero,
-                    activeColor: const Color(0xFFFD8B51),
-                  ),
+//                   CheckboxListTile(
+//                     value: _includeCoverLetter,
+//                     onChanged: (value) {
+//                       setState(() {
+//                         _includeCoverLetter = value ?? false;
+//                       });
+//                     },
+//                     title: const Text('Include cover letter'),
+//                     contentPadding: EdgeInsets.zero,
+//                     activeColor: const Color(0xFFFD8B51),
+//                   ),
 
-                  CheckboxListTile(
-                    value: _includePortfolioLink,
-                    onChanged: (value) {
-                      setState(() {
-                        _includePortfolioLink = value ?? false;
-                      });
-                    },
-                    title: const Text('Include portfolio link'),
-                    contentPadding: EdgeInsets.zero,
-                    activeColor: const Color(0xFFFD8B51),
-                  ),
+//                   CheckboxListTile(
+//                     value: _includePortfolioLink,
+//                     onChanged: (value) {
+//                       setState(() {
+//                         _includePortfolioLink = value ?? false;
+//                       });
+//                     },
+//                     title: const Text('Include portfolio link'),
+//                     contentPadding: EdgeInsets.zero,
+//                     activeColor: const Color(0xFFFD8B51),
+//                   ),
 
-                  CheckboxListTile(
-                    value: _includeReferences,
-                    onChanged: (value) {
-                      setState(() {
-                        _includeReferences = value ?? false;
-                      });
-                    },
-                    title: const Text('Include references'),
-                    contentPadding: EdgeInsets.zero,
-                    activeColor: const Color(0xFFFD8B51),
-                  ),
+//                   CheckboxListTile(
+//                     value: _includeReferences,
+//                     onChanged: (value) {
+//                       setState(() {
+//                         _includeReferences = value ?? false;
+//                       });
+//                     },
+//                     title: const Text('Include references'),
+//                     contentPadding: EdgeInsets.zero,
+//                     activeColor: const Color(0xFFFD8B51),
+//                   ),
 
-                  const SizedBox(height: 24),
+//                   const SizedBox(height: 24),
 
-                  // Cover Letter (like your web form)
-                  const Text(
-                    'Cover Letter (Optional)',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.black87,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  TextField(
-                    controller: _coverLetterController,
-                    decoration: const InputDecoration(
-                      hintText: 'Write a brief message to the employer...',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.all(12),
-                    ),
-                    maxLines: 4,
-                  ),
+//                   // Cover Letter (like your web form)
+//                   const Text(
+//                     'Cover Letter (Optional)',
+//                     style: TextStyle(
+//                       fontSize: 16,
+//                       fontWeight: FontWeight.w600,
+//                       color: Colors.black87,
+//                     ),
+//                   ),
+//                   const SizedBox(height: 8),
+//                   TextField(
+//                     controller: _coverLetterController,
+//                     decoration: const InputDecoration(
+//                       hintText: 'Write a brief message to the employer...',
+//                       border: OutlineInputBorder(),
+//                       contentPadding: EdgeInsets.all(12),
+//                     ),
+//                     maxLines: 4,
+//                   ),
 
-                  const SizedBox(height: 24),
+//                   const SizedBox(height: 24),
 
-                  // Accessibility Needs (key PWD feature from your web!)
-                  // const Text(
-                  //   'Accessibility Needs',
-                  //   style: TextStyle(
-                  //     fontSize: 16,
-                  //     fontWeight: FontWeight.w600,
-                  //     color: Colors.black87,
-                  //   ),
-                  // ),
-                  // const SizedBox(height: 8),
-                  // TextField(
-                  //   controller: _accessibilityNeedsController,
-                  //   decoration: const InputDecoration(
-                  //     hintText:
-                  //         'Please share any accessibility accommodations you may need during the interview process...',
-                  //     border: OutlineInputBorder(),
-                  //     contentPadding: EdgeInsets.all(12),
-                  //   ),
-                  //   maxLines: 3,
-                  // ),
-                ],
-              ),
-            ),
-          ),
+//                   // Accessibility Needs (key PWD feature from your web!)
+//                   // const Text(
+//                   //   'Accessibility Needs',
+//                   //   style: TextStyle(
+//                   //     fontSize: 16,
+//                   //     fontWeight: FontWeight.w600,
+//                   //     color: Colors.black87,
+//                   //   ),
+//                   // ),
+//                   // const SizedBox(height: 8),
+//                   // TextField(
+//                   //   controller: _accessibilityNeedsController,
+//                   //   decoration: const InputDecoration(
+//                   //     hintText:
+//                   //         'Please share any accessibility accommodations you may need during the interview process...',
+//                   //     border: OutlineInputBorder(),
+//                   //     contentPadding: EdgeInsets.all(12),
+//                   //   ),
+//                   //   maxLines: 3,
+//                   // ),
+//                 ],
+//               ),
+//             ),
+//           ),
 
-          // Action buttons (like your web modal)
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, -2),
-                ),
-              ],
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed:
-                        _isSubmitting ? null : () => Navigator.pop(context),
-                    child: const Text('Cancel'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  flex: 2,
-                  child: ElevatedButton(
-                    onPressed: _isSubmitting ? null : _submitApplication,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF257180),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    child: _isSubmitting
-                        ? const SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                              valueColor:
-                                  AlwaysStoppedAnimation<Color>(Colors.white),
-                            ),
-                          )
-                        : const Text('Submit Application'),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
+//           // Action buttons (like your web modal)
+//           Container(
+//             padding: const EdgeInsets.all(20),
+//             decoration: BoxDecoration(
+//               color: Colors.white,
+//               boxShadow: [
+//                 BoxShadow(
+//                   color: Colors.black.withOpacity(0.05),
+//                   blurRadius: 8,
+//                   offset: const Offset(0, -2),
+//                 ),
+//               ],
+//             ),
+//             child: Row(
+//               children: [
+//                 Expanded(
+//                   child: OutlinedButton(
+//                     onPressed:
+//                         _isSubmitting ? null : () => Navigator.pop(context),
+//                     child: const Text('Cancel'),
+//                   ),
+//                 ),
+//                 const SizedBox(width: 12),
+//                 Expanded(
+//                   flex: 2,
+//                   child: ElevatedButton(
+//                     onPressed: _isSubmitting ? null : _submitApplication,
+//                     style: ElevatedButton.styleFrom(
+//                       backgroundColor: const Color(0xFF257180),
+//                       foregroundColor: Colors.white,
+//                       padding: const EdgeInsets.symmetric(vertical: 12),
+//                     ),
+//                     child: _isSubmitting
+//                         ? const SizedBox(
+//                             width: 20,
+//                             height: 20,
+//                             child: CircularProgressIndicator(
+//                               strokeWidth: 2,
+//                               valueColor:
+//                                   AlwaysStoppedAnimation<Color>(Colors.white),
+//                             ),
+//                           )
+//                         : const Text('Submit Application'),
+//                   ),
+//                 ),
+//               ],
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+// }

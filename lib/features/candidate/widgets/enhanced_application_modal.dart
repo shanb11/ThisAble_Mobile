@@ -62,15 +62,76 @@ class _EnhancedApplicationModalState extends State<EnhancedApplicationModal> {
       final response =
           await ApiService.getApplicationData(widget.job['job_id']);
 
+      print('🔧 [Modal] API Response: ${response['success']}');
+
       if (response['success']) {
+        final data = response['data'];
+
+        // ✅ DEBUG: Log the data structure
+        print('🔧 [Modal] Resume data: ${data['resume']}');
+        print('🔧 [Modal] All resumes: ${data['all_resumes']}');
+        print('🔧 [Modal] Has resume: ${data['has_resume']}');
+
         setState(() {
-          _applicationData = response['data'];
+          _applicationData = data;
           _isLoading = false;
 
-          // Auto-select current resume
-          if (_applicationData!['resume'] != null) {
-            _selectedResumeId = _applicationData!['resume']['resume_id'];
+          // ✅ FIXED: Safe resume selection with deduplication
+          final allResumesList = (data['all_resumes'] as List?) ?? [];
+
+          print(
+              '🔧 [Modal] Total resumes in list (before dedup): ${allResumesList.length}');
+
+          if (allResumesList.isNotEmpty) {
+            // ✅ Remove duplicates - keep first occurrence of each resume_id
+            final Map<int, Map<String, dynamic>> uniqueResumesMap = {};
+            for (var resume in allResumesList) {
+              final resumeId = resume['resume_id'] as int?;
+              if (resumeId != null && !uniqueResumesMap.containsKey(resumeId)) {
+                uniqueResumesMap[resumeId] = resume;
+              }
+            }
+
+            final allResumes = uniqueResumesMap.values.toList();
+            print('🔧 [Modal] Total resumes after dedup: ${allResumes.length}');
+
+            // Update the data with deduplicated list
+            _applicationData!['all_resumes'] = allResumes;
+
+            // Get all resume IDs to verify no duplicates
+            final resumeIds = allResumes.map((r) => r['resume_id']).toList();
+            print('🔧 [Modal] Resume IDs (after dedup): $resumeIds');
+
+            // Try to select current resume if it exists and is valid
+            if (data['resume'] != null) {
+              final currentResumeId = data['resume']['resume_id'];
+              print('🔧 [Modal] Current resume ID: $currentResumeId');
+
+              final resumeExists =
+                  allResumes.any((r) => r['resume_id'] == currentResumeId);
+
+              if (resumeExists) {
+                _selectedResumeId = currentResumeId;
+                print('✅ [Modal] Selected current resume: $currentResumeId');
+              } else {
+                // Fallback to first resume
+                _selectedResumeId = allResumes.first['resume_id'];
+                print(
+                    '⚠️ [Modal] Current resume not in list, using first: $_selectedResumeId');
+              }
+            } else {
+              // No current resume, select first available
+              _selectedResumeId = allResumes.first['resume_id'];
+              print(
+                  '⚠️ [Modal] No current resume, using first: $_selectedResumeId');
+            }
+          } else {
+            // No resumes available
+            _selectedResumeId = null;
+            print('❌ [Modal] No resumes available');
           }
+
+          print('🔧 [Modal] Final selected resume ID: $_selectedResumeId');
         });
       } else {
         setState(() {
@@ -80,6 +141,7 @@ class _EnhancedApplicationModalState extends State<EnhancedApplicationModal> {
         });
       }
     } catch (e) {
+      print('❌ [Modal] Error loading data: $e');
       setState(() {
         _errorMessage = 'Network error: $e';
         _isLoading = false;
@@ -88,35 +150,68 @@ class _EnhancedApplicationModalState extends State<EnhancedApplicationModal> {
   }
 
   Future<void> _submitApplication() async {
+    print('🔧 [Modal] ========== SUBMIT CLICKED ==========');
+    print('🔧 [Modal] Selected resume ID: $_selectedResumeId');
+    print('🔧 [Modal] Is submitting: $_isSubmitting');
+
     if (_selectedResumeId == null) {
+      print('❌ [Modal] No resume selected!');
       _showSnackBar('Please select a resume', isError: true);
       return;
     }
 
+    if (_isSubmitting) {
+      print('⚠️ [Modal] Already submitting, ignoring duplicate click');
+      return;
+    }
+
+    print('✅ [Modal] Starting submission...');
     setState(() => _isSubmitting = true);
 
     try {
+      final jobId = widget.job['job_id'];
+      final coverLetter =
+          _includeCoverLetter ? _coverLetterController.text : null;
+      final accessibilityNeeds = _accessibilityNeedsController.text;
+
+      print('🔧 [Modal] Job ID: $jobId');
+      print('🔧 [Modal] Resume ID: $_selectedResumeId');
+      print('🔧 [Modal] Include cover letter: $_includeCoverLetter');
+      print('🔧 [Modal] Cover letter length: ${coverLetter?.length ?? 0}');
+      print(
+          '🔧 [Modal] Accessibility needs length: ${accessibilityNeeds.length}');
+
+      print('🔧 [Modal] Calling ApiService.applyToJob...');
+
       final response = await ApiService.applyToJob(
-        jobId: widget.job['job_id'],
+        jobId: jobId,
         resumeId: _selectedResumeId!,
-        coverLetter: _includeCoverLetter ? _coverLetterController.text : null,
-        accessibilityNeeds: _accessibilityNeedsController.text,
+        coverLetter: coverLetter,
+        accessibilityNeeds: accessibilityNeeds,
       );
 
+      print('🔧 [Modal] API Response: ${response['success']}');
+      print('🔧 [Modal] API Message: ${response['message']}');
+
       if (response['success']) {
+        print('✅ [Modal] Application submitted successfully!');
         if (mounted) {
-          Navigator.pop(context, true); // Return true to indicate success
+          Navigator.pop(context, true);
           _showSnackBar('Application submitted successfully!');
         }
       } else {
-        _showSnackBar(response['message'] ?? 'Failed to submit application',
-            isError: true);
+        print('❌ [Modal] Application failed: ${response['message']}');
+        throw Exception(response['message'] ?? 'Failed to submit application');
       }
     } catch (e) {
-      _showSnackBar('Network error: $e', isError: true);
+      print('❌ [Modal] Exception during submission: $e');
+      if (mounted) {
+        _showSnackBar('Error: $e', isError: true);
+      }
     } finally {
       if (mounted) {
         setState(() => _isSubmitting = false);
+        print('🔧 [Modal] Submission complete, button re-enabled');
       }
     }
   }
@@ -443,30 +538,51 @@ class _EnhancedApplicationModalState extends State<EnhancedApplicationModal> {
                       value: _selectedResumeId,
                       isExpanded: true,
                       hint: const Text('Select a different resume'),
-                      items: allResumes.map((r) {
-                        return DropdownMenuItem<int>(
-                          value: r['resume_id'],
-                          child: Row(
-                            children: [
-                              Icon(
-                                r['is_current']
-                                    ? Icons.check_circle
-                                    : Icons.description,
-                                size: 16,
-                                color: r['is_current']
-                                    ? Colors.green
-                                    : Colors.grey,
+                      items: allResumes
+                          .map((r) {
+                            final resumeId = r['resume_id'] as int?;
+                            final fileName =
+                                r['file_name'] as String? ?? 'Unknown';
+                            final isCurrent =
+                                r['is_current'] == true || r['is_current'] == 1;
+
+                            // ✅ Skip invalid items
+                            if (resumeId == null) {
+                              print(
+                                  '⚠️ [Modal] Skipping resume with null ID: $fileName');
+                              return null;
+                            }
+
+                            return DropdownMenuItem<int>(
+                              value: resumeId,
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    isCurrent
+                                        ? Icons.check_circle
+                                        : Icons.description,
+                                    size: 16,
+                                    color:
+                                        isCurrent ? Colors.green : Colors.grey,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      fileName,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              Expanded(child: Text(r['file_name'])),
-                            ],
-                          ),
-                        );
-                      }).toList(),
+                            );
+                          })
+                          .whereType<DropdownMenuItem<int>>()
+                          .toList(), // ✅ Filter out nulls
                       onChanged: (int? resumeId) {
                         if (resumeId != null) {
                           setState(() {
                             _selectedResumeId = resumeId;
+                            print('🔧 [Modal] User selected resume: $resumeId');
                           });
                         }
                       },
@@ -682,7 +798,7 @@ class _EnhancedApplicationModalState extends State<EnhancedApplicationModal> {
   }
 
   Widget _buildFooter() {
-    final hasResume = _applicationData!['has_resume'];
+    final hasResume = _applicationData?['has_resume'] ?? false;
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -690,48 +806,59 @@ class _EnhancedApplicationModalState extends State<EnhancedApplicationModal> {
         color: Colors.white,
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withOpacity(0.05),
             blurRadius: 10,
             offset: const Offset(0, -5),
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Expanded(
-            child: OutlinedButton(
-              onPressed: _isSubmitting ? null : () => Navigator.pop(context),
-              style: OutlinedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                side: const BorderSide(color: AppColors.secondaryTeal),
+      child: SafeArea(
+        child: Row(
+          children: [
+            Expanded(
+              child: OutlinedButton(
+                onPressed: () {
+                  print('🔧 [Modal] Cancel button clicked');
+                  Navigator.pop(context);
+                },
+                child: const Text('Cancel'),
               ),
-              child: const Text('Cancel'),
             ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            flex: 2,
-            child: ElevatedButton(
-              onPressed:
-                  (_isSubmitting || !hasResume) ? null : _submitApplication,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.secondaryTeal,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+            const SizedBox(width: 16),
+            Expanded(
+              flex: 2,
+              child: ElevatedButton(
+                onPressed: !hasResume || _isSubmitting
+                    ? () {
+                        print('⚠️ [Modal] Submit button disabled');
+                        print(
+                            '⚠️ [Modal] hasResume: $hasResume, isSubmitting: $_isSubmitting');
+                      }
+                    : () {
+                        print('🔧 [Modal] Submit button clicked!');
+                        _submitApplication();
+                      },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: hasResume && !_isSubmitting
+                      ? AppColors.secondaryTeal
+                      : Colors.grey,
+                ),
+                child: _isSubmitting
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
+                    : Text(hasResume
+                        ? 'Submit Application'
+                        : 'Upload Resume First'),
               ),
-              child: _isSubmitting
-                  ? const SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-                      ),
-                    )
-                  : Text(
-                      hasResume ? 'Submit Application' : 'Upload Resume First'),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

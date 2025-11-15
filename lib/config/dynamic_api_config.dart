@@ -48,6 +48,31 @@ class DynamicApiConfig {
     return PRODUCTION_API_URL;
   }
 
+  /// Get the file base URL (without /api suffix for direct file access)
+  static Future<String> getFileBaseUrl() async {
+    // For production
+    if (USE_PRODUCTION) {
+      // Remove /api from production URL
+      return 'https://thisable-production.up.railway.app';
+    }
+
+    // For local development
+    if (currentIP != null) {
+      return 'http://$currentIP:$port/ThisAble';
+    }
+
+    // Try cached IP
+    final prefs = await SharedPreferences.getInstance();
+    final cachedIP = prefs.getString(_ipKey);
+
+    if (cachedIP != null) {
+      return 'http://$cachedIP:$port/ThisAble';
+    }
+
+    // Fallback to production
+    return 'https://thisable-production.up.railway.app';
+  }
+
   /// Initialize configuration
   static Future<bool> initialize() async {
     print('🔧 Initializing DynamicApiConfig...');

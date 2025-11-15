@@ -2350,7 +2350,7 @@ class ApiService {
 
       final response = await http.get(
         Uri.parse(endpoint),
-        headers: await _getHeaders(),
+        headers: await _getHeaders(includeAuth: true), // ✅ ADD THIS PARAMETER
       );
 
       print('🔧 Application data response: ${response.statusCode}');
@@ -2373,7 +2373,7 @@ class ApiService {
 
       final response = await http.post(
         Uri.parse(endpoint),
-        headers: await _getHeaders(),
+        headers: await _getHeaders(includeAuth: true), // ✅ ADD THIS PARAMETER
         body: json.encode({
           'action': 'apply_job',
           'job_id': jobId,

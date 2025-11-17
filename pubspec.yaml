@@ -40,7 +40,7 @@ dependencies:
   flutter_tts: ^3.8.5
   
   # Speech-to-Text (matches your web voice search)
-  speech_to_text: ^6.3.0
+  speech_to_text: ^7.0.0
   
   # Permission handling (for microphone access)
   permission_handler: ^11.0.1

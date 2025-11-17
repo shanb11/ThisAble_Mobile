@@ -112,4 +112,22 @@ class AppColors {
   static const Color locationPillBg =
       Color(0x80F2E5BF); // Location pill background
   static const Color salaryTextColor = Color(0xFF4CAF50); // Salary text color
+
+  // === GRADIENT COLORS FOR ANIMATED HERO === //
+  // Hero gradient animation colors
+  static const Color heroGradientStart =
+      Color(0xFF257180); // Same as secondaryTeal
+  static const Color heroGradientEnd =
+      Color(0xFF1E5D68); // Darker teal for gradient
+
+  // Glassmorphism colors
+  static const Color glassmorphismOverlay =
+      Color(0x14FFFFFF); // rgba(255,255,255,0.08)
+  static const Color glassmorphismBorder =
+      Color(0x4DFFFFFF); // rgba(255,255,255,0.3)
+
+  // Button gradient colors (orange gradient)
+  static const Color buttonGradientStart =
+      Color(0xFFFD8B51); // Same as primaryOrange
+  static const Color buttonGradientEnd = Color(0xFFFF9A65); // Lighter orange
 }

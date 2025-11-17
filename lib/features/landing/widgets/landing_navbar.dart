@@ -4,41 +4,48 @@ import '../../../core/theme/text_styles.dart';
 import '../../../shared/widgets/custom_button.dart';
 import '../../../config/routes.dart';
 
-/// Landing Navbar Widget - Mobile version of includes/landing/landing_navbar.php
-/// FIXED: Proper navigation and active states using YOUR ACTUAL theme structure
+/// Landing Navbar Widget - Enhanced to match web styling exactly
+/// Active state: TEAL gradient background with white text
+/// Tap state: ORANGE gradient background (mobile equivalent of hover)
 class LandingNavbar extends StatelessWidget {
-  final VoidCallback? onHomePressed; // ADDED: Missing Home callback
+  final VoidCallback? onHomePressed;
   final VoidCallback? onAboutPressed;
   final VoidCallback? onJobsPressed;
-  final String currentPage; // ADDED: Track current page for active states
+  final String currentPage;
 
   const LandingNavbar({
     super.key,
-    this.onHomePressed, // ADDED: Now accepts Home callback
+    this.onHomePressed,
     this.onAboutPressed,
     this.onJobsPressed,
-    required this.currentPage, // REQUIRED: Must specify current page
+    required this.currentPage,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      // Matches your CSS: background-color: #ffffff, box-shadow, position: sticky
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
+      // Enhanced glassmorphism effect matching web
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.95),
+        boxShadow: const [
           BoxShadow(
-            color: AppColors.shadowMedium, // Using YOUR actual color
-            blurRadius: 10,
-            offset: Offset(0, 2),
+            color: Color(0x14000000), // rgba(0, 0, 0, 0.08)
+            blurRadius: 20,
+            offset: Offset(0, 4),
           ),
         ],
+        border: Border(
+          bottom: BorderSide(
+            color: AppColors.primaryOrange.withOpacity(0.1),
+            width: 1,
+          ),
+        ),
       ),
       child: SafeArea(
         child: Padding(
           padding: const EdgeInsets.symmetric(
-            horizontal: 20, // matches container padding: 0 20px
-            vertical: 15, // matches header padding: 15px 0
+            horizontal: 20,
+            vertical: 15,
           ),
           child: _buildNavbarContent(context),
         ),
@@ -48,34 +55,24 @@ class LandingNavbar extends StatelessWidget {
 
   /// Build navbar content - responsive design
   Widget _buildNavbarContent(BuildContext context) {
-    // Check screen width for responsive behavior
     final screenWidth = MediaQuery.of(context).size.width;
-    final isLargeScreen =
-        screenWidth > 768; // matches your @media (max-width: 768px)
+    final isLargeScreen = screenWidth > 768;
 
     if (isLargeScreen) {
-      // Desktop/Tablet Layout (matches your web header flex)
+      // Desktop/Tablet Layout
       return Row(
         children: [
-          // Logo Section (matches .logo styling)
           _buildLogo(),
-
           const Spacer(),
-
-          // Navigation Links (matches nav ul)
           _buildNavLinks(),
-
           const SizedBox(width: 20),
-
-          // Sign In Button (matches .sign-in)
           _buildSignInButton(context),
         ],
       );
     } else {
-      // Mobile Layout (responsive design)
+      // Mobile Layout
       return Column(
         children: [
-          // Top row: Logo and Sign In
           Row(
             children: [
               _buildLogo(),
@@ -83,185 +80,271 @@ class LandingNavbar extends StatelessWidget {
               _buildSignInButton(context),
             ],
           ),
-
           const SizedBox(height: 15),
-
-          // Bottom row: Navigation Links
           _buildNavLinks(),
         ],
       );
     }
   }
 
-  /// Logo Section - matches your .logo CSS
+  /// Logo Section with gradient text effect
+  /// Logo Section - Simple solid color
   Widget _buildLogo() {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Your actual logo PNG
         Image.asset(
           'assets/images/thisablelogo.png',
           width: 50,
           height: 50,
           fit: BoxFit.contain,
         ),
-
         const SizedBox(width: 10),
-
-        // Logo Text
         Text(
           'ThisAble',
           style: AppTextStyles.navItemActive.copyWith(
             fontSize: 24,
             fontWeight: FontWeight.bold,
+            color: AppColors.secondaryTeal, // Solid black/dark text
           ),
         ),
       ],
     );
   }
 
-  /// Navigation Links - FIXED: Dynamic active states based on current page
+  /// Navigation Links with enhanced styling
   Widget _buildNavLinks() {
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        // Home Link - FIXED: Now has proper callback and dynamic active state
-        _buildNavLink(
+        _buildEnhancedNavLink(
           text: 'Home',
-          isActive: currentPage == 'home', // DYNAMIC: Based on current page
-          onPressed: onHomePressed, // FIXED: Now has proper callback
+          isActive: currentPage == 'home',
+          onPressed: onHomePressed,
         ),
-
-        const SizedBox(width: 20), // matches nav ul li margin-left: 20px
-
-        // Jobs Link - FIXED: Now has dynamic active state
-        _buildNavLink(
+        const SizedBox(width: 20),
+        _buildEnhancedNavLink(
           text: 'Jobs',
-          isActive: currentPage == 'jobs', // DYNAMIC: Based on current page
+          isActive: currentPage == 'jobs',
           onPressed: onJobsPressed,
         ),
-
         const SizedBox(width: 20),
-
-        // About Link - FIXED: Now has dynamic active state
-        _buildNavLink(
+        _buildEnhancedNavLink(
           text: 'About',
-          isActive: currentPage == 'about', // DYNAMIC: Based on current page
+          isActive: currentPage == 'about',
           onPressed: onAboutPressed,
         ),
       ],
     );
   }
 
-  /// Individual Navigation Link - matches your nav ul li a styling
-  Widget _buildNavLink({
+  /// Enhanced Navigation Link - Matches web styling exactly
+  Widget _buildEnhancedNavLink({
     required String text,
     required bool isActive,
     VoidCallback? onPressed,
   }) {
-    return InkWell(
-      onTap: onPressed,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 8,
+    return AnimatedNavLink(
+      text: text,
+      isActive: isActive,
+      onPressed: onPressed,
+    );
+  }
+
+  /// Sign In Button with gradient
+  Widget _buildSignInButton(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primaryOrange,
+            AppColors.buttonGradientEnd,
+          ],
         ),
-        decoration: BoxDecoration(
-          // Active state styling (matches your CSS)
-          color: isActive
-              ? AppColors.primaryOrange.withOpacity(0.1)
-              : Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primaryOrange.withOpacity(0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => AppRoutes.goToCandidateLogin(context),
           borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isActive
-                ? AppColors.primaryOrange
-                : Colors.transparent, // Using YOUR actual colors
-            width: 1,
+          child: Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 28,
+              vertical: 12,
+            ),
+            child: const Text(
+              'Sign In',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.3,
+              ),
+            ),
           ),
         ),
-        child: Text(
-          text,
-          style: isActive
-              ? AppTextStyles.navItemActive.copyWith(
-                  // Using YOUR actual text styles
-                  color: AppColors.primaryOrange,
-                  fontWeight: FontWeight.w600,
+      ),
+    );
+  }
+}
+
+/// Animated Navigation Link Widget
+/// Handles active state (TEAL gradient) and tap state (ORANGE gradient)
+class AnimatedNavLink extends StatefulWidget {
+  final String text;
+  final bool isActive;
+  final VoidCallback? onPressed;
+
+  const AnimatedNavLink({
+    super.key,
+    required this.text,
+    required this.isActive,
+    this.onPressed,
+  });
+
+  @override
+  State<AnimatedNavLink> createState() => _AnimatedNavLinkState();
+}
+
+class _AnimatedNavLinkState extends State<AnimatedNavLink>
+    with SingleTickerProviderStateMixin {
+  bool _isPressed = false;
+  late AnimationController _underlineController;
+  late Animation<double> _underlineAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _underlineController = AnimationController(
+      duration: const Duration(milliseconds: 300),
+      vsync: this,
+    );
+    _underlineAnimation = Tween<double>(begin: 0.0, end: 0.6).animate(
+      CurvedAnimation(parent: _underlineController, curve: Curves.easeOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _underlineController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) {
+        setState(() => _isPressed = true);
+        _underlineController.forward();
+      },
+      onTapUp: (_) {
+        setState(() => _isPressed = false);
+        _underlineController.reverse();
+        widget.onPressed?.call();
+      },
+      onTapCancel: () {
+        setState(() => _isPressed = false);
+        _underlineController.reverse();
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+        decoration: BoxDecoration(
+          // ACTIVE STATE: TEAL gradient
+          // PRESSED STATE: ORANGE gradient
+          // REGULAR STATE: Transparent
+          gradient: widget.isActive
+              ? const LinearGradient(
+                  colors: [
+                    AppColors.secondaryTeal, // #257180
+                    Color(0xFF2B7A85), // Lighter teal
+                  ],
                 )
-              : AppTextStyles.navItem.copyWith(
-                  // Using YOUR actual text styles
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w400,
-                ),
+              : _isPressed
+                  ? LinearGradient(
+                      colors: [
+                        AppColors.primaryOrange.withOpacity(0.1),
+                        AppColors.buttonGradientEnd.withOpacity(0.15),
+                      ],
+                    )
+                  : null,
+          borderRadius: BorderRadius.circular(10),
+          boxShadow: widget.isActive
+              ? [
+                  BoxShadow(
+                    color: AppColors.secondaryTeal.withOpacity(0.3),
+                    blurRadius: 15,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : _isPressed
+                  ? [
+                      BoxShadow(
+                        color: AppColors.primaryOrange.withOpacity(0.2),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ]
+                  : null,
         ),
-      ),
-    );
-  }
-
-  /// Sign In Button - matches your .sign-in CSS
-  Widget _buildSignInButton(BuildContext context) {
-    return SignInButton(
-      // Using YOUR actual SignInButton component
-      onPressed: () => AppRoutes.goToCandidateLogin(context),
-    );
-  }
-
-  /// Show Sign-In Options Modal (matches your web dropdown)
-  void _showSignInOptions(BuildContext context) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: Colors.white,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        transform: _isPressed
+            ? (Matrix4.identity()..translate(0.0, -2.0, 0.0))
+            : Matrix4.identity(),
+        child: Stack(
+          clipBehavior: Clip.none,
           children: [
-            // Modal Header
+            // Text
             Text(
-              'Choose Your Account Type',
-              style: AppTextStyles.cardTitle.copyWith(
-                // Using YOUR actual text style
-                color: AppColors.textPrimary,
+              widget.text,
+              style: TextStyle(
+                color: widget.isActive
+                    ? Colors.white
+                    : _isPressed
+                        ? AppColors.primaryOrange
+                        : AppColors.textPrimary,
+                fontSize: 16,
+                fontWeight: widget.isActive ? FontWeight.w600 : FontWeight.w500,
+                letterSpacing: 0.3,
               ),
             ),
-            const SizedBox(height: 8),
-            Text(
-              'Select how you want to sign in to ThisAble',
-              style: AppTextStyles.bodyMedium.copyWith(
-                // Using YOUR actual text style
-                color: AppColors.textSecondary,
+
+            // Underline animation (for pressed state)
+            if (!widget.isActive)
+              Positioned(
+                bottom: -5,
+                left: 0,
+                right: 0,
+                child: AnimatedBuilder(
+                  animation: _underlineAnimation,
+                  builder: (context, child) {
+                    return Center(
+                      child: Container(
+                        width: 60 * _underlineAnimation.value,
+                        height: 2,
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              AppColors.primaryOrange,
+                              AppColors.buttonGradientEnd,
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
-
-            // Candidate Sign In
-            CustomButton(
-              text: 'Sign In as Job Seeker',
-              onPressed: () {
-                Navigator.pop(context);
-                AppRoutes.goToCandidateLogin(context);
-              },
-              type: CustomButtonType.primary, // Using YOUR actual button type
-              icon: const Icon(Icons.person, color: Colors.white),
-              isFullWidth: true,
-            ),
-            const SizedBox(height: 12),
-
-            // Employer Sign In
-            CustomButton(
-              text: 'Sign In as Employer',
-              onPressed: () {
-                Navigator.pop(context);
-                AppRoutes.goToEmployerLogin(context);
-              },
-              type: CustomButtonType.outlined, // Using YOUR actual button type
-              icon: Icon(Icons.business, color: AppColors.secondaryTeal),
-              isFullWidth: true,
-            ),
-            const SizedBox(height: 24),
           ],
         ),
       ),

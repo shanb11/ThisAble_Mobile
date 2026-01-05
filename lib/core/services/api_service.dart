@@ -253,7 +253,10 @@ class ApiService {
 
       final response = await http.get(
         Uri.parse(url),
-        headers: {'Accept': 'application/json'},
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'ThisAble-Mobile-App/1.0 (Android; Flutter)'
+        },
       );
 
       return _handleResponse(response);
@@ -1298,6 +1301,7 @@ class ApiService {
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
+          'User-Agent': 'ThisAble-Mobile-App/1.0 (Android; Flutter)',
         },
       );
 
@@ -1338,6 +1342,7 @@ class ApiService {
               headers: {
                 'Content-Type': 'application/json',
                 'Accept': 'application/json',
+                'User-Agent': 'ThisAble-Mobile-App/1.0 (Android; Flutter)',
               },
             );
 
@@ -1534,7 +1539,10 @@ class ApiService {
 
         final response = await http.get(
           Uri.parse(testUrl),
-          headers: {'Accept': 'application/json'},
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'ThisAble-Mobile-App/1.0 (Android; Flutter)',
+          },
         ).timeout(const Duration(seconds: 10));
 
         print('🔍 Test response status: ${response.statusCode}');
@@ -1649,7 +1657,10 @@ class ApiService {
       try {
         final response = await http.get(
           Uri.parse('${baseUrl}/test.php'),
-          headers: {'Accept': 'application/json'},
+          headers: {
+            'Accept': 'application/json',
+            'User-Agent': 'ThisAble-Mobile-App/1.0 (Android; Flutter)',
+          },
         ).timeout(const Duration(seconds: 10));
 
         print('🔍 ✅ Connection test SUCCESS: ${response.statusCode}');
@@ -1762,6 +1773,7 @@ class ApiService {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
+          'User-Agent': 'ThisAble-Mobile-App/1.0 (Android; Flutter)',
         },
       ).timeout(const Duration(seconds: 30));
 
@@ -2169,6 +2181,7 @@ class ApiService {
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
+          'User-Agent': 'ThisAble-Mobile-App/1.0 (Android; Flutter)',
         },
       );
 

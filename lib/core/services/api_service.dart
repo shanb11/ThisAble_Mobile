@@ -72,11 +72,21 @@ class ApiService {
   // ===========================================
 
   /// Common headers for API requests - FIXED NULL HANDLING
+  /// Get HTTP headers with platform-aware User-Agent
   static Future<Map<String, String>> _getHeaders(
       {bool includeAuth = false}) async {
+    // Platform-specific User-Agent (CRITICAL for InfinityFree anti-bot)
+    String userAgent;
+    if (kIsWeb) {
+      userAgent = 'ThisAble-Web-App/1.0 (Flutter; Web)';
+    } else {
+      userAgent = 'ThisAble-Mobile-App/1.0 (Android; Flutter)';
+    }
+
     Map<String, String> headers = {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
+      'User-Agent': userAgent, // ✅ ADDED - Required for InfinityFree
     };
 
     if (includeAuth) {
